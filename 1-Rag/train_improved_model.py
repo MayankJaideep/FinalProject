@@ -16,9 +16,10 @@ import shap
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, matthews_corrcoef
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, matthews_corrcoef, brier_score_loss
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.pipeline import Pipeline
 from imblearn.over_sampling import SMOTE
 import warnings
@@ -215,13 +216,18 @@ class StackingModelTrainer:
         
         self.stacking_model.fit(X_train, y_train)
         
+        # Calibration (Platt Scaling)
+        logger.info("Calibrating model probabilities...")
+        self.calibrated_model = CalibratedClassifierCV(self.stacking_model, method='sigmoid', cv='prefit')
+        self.calibrated_model.fit(X_train, y_train)
+        
         # Evaluate
-        self.evaluate_model(self.stacking_model, X_test, y_test)
+        self.evaluate_model(self.calibrated_model, X_test, y_test)
         
         # Save
         self.save_model()
         
-        return self.stacking_model
+        return self.calibrated_model
 
     def evaluate_model(self, model, X_test, y_test):
         """Detailed evaluation"""
@@ -234,11 +240,25 @@ class StackingModelTrainer:
         
         mcc = matthews_corrcoef(y_test, y_pred)
         print(f"Matthews Correlation Coefficient (MCC): {mcc:.4f}")
+        
+        # Brier Score (only works for binary or if averaged, but we can do per-class or just weighted)
+        # For multi-class, brier_score_loss isn't direct in sklearn < 0.24 without care, 
+        # but let's try a simple approach or skip if complex. 
+        # Actually, simpler: just print probabilities for a few samples to verify calibration visually
+        probs = model.predict_proba(X_test)
+        confidence = np.max(probs, axis=1)
+        avg_confidence = np.mean(confidence)
+        acc = accuracy_score(y_test, y_pred)
+        
+        print(f"Average Confidence: {avg_confidence:.4f}")
+        print(f"Actual Accuracy:    {acc:.4f}")
+        print(f"Calibration Gap:    {abs(avg_confidence - acc):.4f}")
 
     def save_model(self):
         """Save artifacts"""
         print(f"\n💾 Saving Ensemble...")
-        joblib.dump(self.stacking_model, os.path.join(self.model_dir, 'stacking_model.pkl'))
+        # Save the CALIBRATED model
+        joblib.dump(self.calibrated_model, os.path.join(self.model_dir, 'stacking_model.pkl'))
         joblib.dump(self.feature_encoders, os.path.join(self.model_dir, 'feature_encoders.pkl'))
         joblib.dump(self.scaler, os.path.join(self.model_dir, 'feature_scaler.pkl'))
         joblib.dump(self.outcome_encoder, os.path.join(self.model_dir, 'outcome_encoder.pkl'))

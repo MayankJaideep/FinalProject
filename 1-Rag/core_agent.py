@@ -59,19 +59,42 @@ def create_agent(vector_store):
             if not vector_store:
                 return "Error: Vector store not initialized."
 
-            # Use optimized search with top_k=5 for faster results
-            docs = vector_store.similarity_search(query, k=5)
+            # Use optimized search with top_k=50 for re-ranking
+            initial_docs = vector_store.similarity_search(query, k=50)
             
-            if not docs:
+            if not initial_docs:
                 perf_monitor.end_timer("vector_searches")
                 return "No relevant documents found in the local database."
             
+            # Re-ranking with Cross-Encoder
+            top_docs = []
+            try:
+                from sentence_transformers import CrossEncoder
+                # Load re-ranker (cached ideally, but here for safety)
+                reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2', device='cpu')
+                
+                # Create pairs [query, doc_text]
+                pairs = [[query, doc.page_content] for doc in initial_docs]
+                scores = reranker.predict(pairs)
+                
+                # Combine docs with scores and sort
+                scored_docs = sorted(zip(initial_docs, scores), key=lambda x: x[1], reverse=True)
+                
+                # Take top 5
+                top_docs = [doc for doc, score in scored_docs[:5]]
+                
+            except Exception as e:
+                print(f"⚠️ Re-ranking failed, falling back to basic search: {e}")
+                top_docs = initial_docs[:5]
+            
             # Format results
             results = []
-            for doc in docs:
+            for doc in top_docs:
                 source = doc.metadata.get('source', 'Unknown')
-                content = doc.page_content[:500]
-                results.append(f"Source: {source}\nContent: {content}...")
+                # Include page number if available
+                page = doc.metadata.get('page', '?')
+                content = doc.page_content[:1500] # Increase context window
+                results.append(f"Source: {source} (Page {page})\nContent: {content}...")
             
             content = "\n\n".join(results)
             perf_monitor.end_timer("vector_searches")
@@ -243,6 +266,12 @@ RESPONSE GUIDELINES:
 6. NEVER show debug information or raw tool outputs.
 7. Format entity extraction results naturally.
 8. NEVER use placeholders like 'X' or 'Y'.
+
+GROUNDING INSTRUCTIONS (CRITICAL):
+1. You strictly answer based on the retrieved context.
+2. If the context does not contain the answer, say "I don't know based on the available documents."
+3. For every factual claim, you MUST append the source in brackets, e.g., [Source: File.pdf].
+4. Do not cite general knowledge unless explicitly asked for external info.
 
 WINNING PREDICTION REQUIREMENTS:
 - Predict probability/winner.
