@@ -6,7 +6,7 @@ Extracts structured features from case text using NLP and pattern matching.
 import re
 import os
 from typing import Dict, Optional
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 
@@ -49,8 +49,8 @@ class FeatureExtractor:
     
     def __init__(self):
         """Initialize feature extractor with LLM fallback"""
-        self.llm = ChatGroq(
-            model_name="llama-3.1-8b-instant",
+        self.llm = ChatOllama(
+            model="llama3",
             temperature=0
         )
         

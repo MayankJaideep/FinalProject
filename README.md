@@ -27,15 +27,15 @@ An advanced legal tech platform that combines **Retrieval-Augmented Generation (
 
 - **Frontend**: React, Tailwind CSS, Lucide Icons, Recharts, Axios.
 - **Backend**: FastAPI, Uvicorn, LangChain, LangGraph.
-- **ML/AI**: XGBoost, LightGBM, Scikit-Learn, Sentence-Transformers (BERT), Groq API (LLM).
-- **Database**: FAISS (Vector Store for RAG).
+- **ML/AI**: XGBoost, LightGBM, Scikit-Learn, Sentence-Transformers (BERT), Ollama (Local LLM).
+- **Database**: Milvus Lite (Vector Store for RAG).
 
 ## 📦 Installation & Setup
 
 ### Prerequisites
 - Python 3.9+
 - Node.js & npm
-- API Keys: `GROQ_API_KEY` (for LLM), `INDIAN_KANOON_API_TOKEN` (optional, for fetching real usage data).
+- API Keys: `INDIAN_KANOON_API_TOKEN` (optional, for fetching real usage data).
 
 ### 1. Backend Setup
 

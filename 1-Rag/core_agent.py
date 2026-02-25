@@ -8,7 +8,7 @@ import logging
 
 from langchain_core.tools import tool
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, AIMessage
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langgraph.graph import StateGraph, END, START
@@ -41,6 +41,43 @@ logger = logging.getLogger(__name__)
 # Global cache for features to replace session_state
 FEATURE_CACHE = {}
 
+# Global singletons for heavy models to avoid reloading on every tool call
+class ModelCache:
+    def __init__(self):
+        self.reranker = None
+        self.predictor = None
+        self.summarizer = None
+        self.ner = None
+
+GLOBAL_MODELS = ModelCache()
+
+def get_reranker():
+    if not GLOBAL_MODELS.reranker:
+        from sentence_transformers import CrossEncoder
+        print("🔄 Loading CrossEncoder into memory...")
+        GLOBAL_MODELS.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2', device='cpu')
+    return GLOBAL_MODELS.reranker
+
+def get_predictor():
+    if not GLOBAL_MODELS.predictor:
+        print("🔄 Loading OutcomePredictor into memory...")
+        predictor = OutcomePredictor(model_dir="models")
+        predictor.load_model()
+        GLOBAL_MODELS.predictor = predictor
+    return GLOBAL_MODELS.predictor
+
+def get_summarizer():
+    if not GLOBAL_MODELS.summarizer:
+        print("🔄 Loading LegalSummarizer into memory...")
+        GLOBAL_MODELS.summarizer = LegalSummarizer()
+    return GLOBAL_MODELS.summarizer
+
+def get_ner():
+    if not GLOBAL_MODELS.ner:
+        print("🔄 Loading LegalNER into memory...")
+        GLOBAL_MODELS.ner = LegalNER()
+    return GLOBAL_MODELS.ner
+
 # Define the state
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
@@ -52,12 +89,13 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
     
     # 1. Define optimized tools with caching
     @tool
-    def search_legal_docs(query: str):
+    def search_legal_docs(query: str, jurisdiction: Optional[str] = None):
         """
         Searches the internal legal database using Hybrid Search (Dense + Sparse).
+        Provide a 'jurisdiction' like 'Delhi High Court' if the user asks for precedents from a specific court.
         """
         perf_monitor.start_timer()
-        print(f"DEBUG: Tool called with query: {query}")
+        print(f"DEBUG: Tool called with query: '{query}', jurisdiction: '{jurisdiction}'")
         
         try:
             if not vector_store:
@@ -65,8 +103,9 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
 
             # --- HYBRID SEARCH LOGIC ---
             
-            # 1. Dense Search (FAISS)
-            dense_results = vector_store.similarity_search(query, k=20) # Get top 20
+            # 1. Dense Search (FAISS or Milvus)
+            filter_expr = f"jurisdiction == '{jurisdiction}'" if jurisdiction and jurisdiction != "All" else None
+            dense_results = vector_store.similarity_search(query, k=20, filter=filter_expr) # Get top 20
             
             # 2. Sparse Search (BM25)
             sparse_results = []
@@ -117,8 +156,7 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
             # 4. Cross-Encoder Re-ranking
             final_docs = []
             try:
-                from sentence_transformers import CrossEncoder
-                reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2', device='cpu')
+                reranker = get_reranker()
                 
                 pairs = [[query, doc.page_content] for doc in top_candidates]
                 scores = reranker.predict(pairs)
@@ -136,7 +174,7 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
                 source = doc.metadata.get('source', 'Unknown')
                 page = doc.metadata.get('page', '?')
                 content = doc.page_content[:1500] 
-                results.append(f"Source: {source} (Page {page})\nContent: {content}...")
+                results.append(f"[REF: {source}-{page}]\nContent: {content}...\n")
             
             content = "\n\n".join(results)
             perf_monitor.end_timer("vector_searches")
@@ -209,8 +247,7 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
                 features = feature_extractor.extract_all_features(case_description)
                 FEATURE_CACHE[cache_key] = features
             
-            predictor = OutcomePredictor(model_dir="models")
-            predictor.load_model()
+            predictor = get_predictor()
             result = predictor.predict(features)
             
             perf_monitor.end_timer("ml_predictions")
@@ -228,7 +265,7 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
         """
         perf_monitor.start_timer()
         try:
-            summarizer = LegalSummarizer()
+            summarizer = get_summarizer()
             result = summarizer.summarize(text)
             perf_monitor.end_timer("ml_predictions")
             perf_monitor.metrics["ml_predictions"] += 1
@@ -245,7 +282,7 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
         perf_monitor.start_timer()
         try:
             # Use Local NER
-            ner = LegalNER() 
+            ner = get_ner()
             # Use get_entity_summary for a nice formatted string
             summary = ner.get_entity_summary(text)
             
@@ -260,11 +297,12 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
     # 2. Create tool list
     tools = [search_legal_docs, search_indian_kanoon, predict_case_outcome, summarize_document, extract_entities]
     
-    # 3. Create optimized LLM
-    llm = ChatGroq(
-        model="llama-3.1-8b-instant",
+    # 3. Create optimized LLM (Ollama)
+    llm = ChatOllama(
+        model="llama3.2",
         temperature=0.1,
-        max_tokens=1024
+        # max_tokens not always supported by Ollama client in same way, but keep for compat if needed
+        # base_url="http://localhost:11434" # Default
     )
     
     # 4. Create tool node
@@ -282,28 +320,37 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
     def call_model(state: AgentState):
         messages = state["messages"]
         
-        system_prompt = """You are an expert Legal AI Assistant specializing in Indian law. Provide accurate, well-structured legal information.
+        system_prompt = """You are an expert Legal AI Assistant specializing in Indian law. Providing accurate, well-structured legal information.
+
+PERSONA ENFORCEMENT (CRITICAL):
+1. NEVER break character. You are the Legal Research Engine.
+2. DO NOT act as an AI coding assistant. DO NOT talk about "developing a RAG pipeline", "sample data", or "helping me understand". 
+3. If the user pastes a document (like an FIR or patent), immediately act as a lawyer analyzing its legal implications.
 
 RESPONSE GUIDELINES:
-1. Provide clear, professional legal analysis.
-2. For case analysis, ALWAYS include a "Winning Prediction" section.
-3. Cite relevant laws and case precedents.
-4. Structure responses with headings.
-5. Include practical legal implications.
+1. Provide COMPREHENSIVE and HIGHLY DETAILED professional legal analysis. Do not omit important details. Address the legal query thoroughly with all relevant findings.
+2. For case analysis, ALWAYS include a detailed "Winning Prediction" section by using the `predict_case_outcome` tool. Do not guess the outcome without using the ML tool.
+3. Cite all relevant laws, statutes, and case precedents that you found.
+4. Structure responses with clear headings.
+5. Include in-depth, practical legal implications and reasoning.
 6. NEVER show debug information or raw tool outputs.
-7. Format entity extraction results naturally.
+7. Format entity extraction results naturally and shortly.
 8. NEVER use placeholders like 'X' or 'Y'.
 
 GROUNDING INSTRUCTIONS (CRITICAL):
 1. You strictly answer based on the retrieved context.
 2. If the context does not contain the answer, say "I don't know based on the available documents."
-3. For every factual claim, you MUST append the source in brackets, e.g., [Source: File.pdf].
+3. For every factual claim, you MUST append the source in brackets using the EXACT format: [REF: SourceName-PageNum], e.g., [REF: contract_law.pdf-12].
 4. Do not cite general knowledge unless explicitly asked for external info.
 
 WINNING PREDICTION REQUIREMENTS:
-- Predict probability/winner.
-- Provide confidence level (High/Medium/Low).
+- Predict probability/winner using the machine learning tool `predict_case_outcome`.
+- Provide confidence level (High/Medium/Low) as returned by the tool calculation.
 - List key supporting factors.
+
+TOOL USAGE INSTRUCTIONS:
+- Whenever the user specifies a particular court (e.g., "[Jurisdiction Context: Delhi High Court]"), you MUST pass `jurisdiction="Delhi High Court"` to `search_legal_docs` tool.
+- If the user asks for cases from all courts, do not pass the jurisdiction parameter or pass "All".
 
 Use tools wisely."""
         

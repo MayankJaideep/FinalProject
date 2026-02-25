@@ -7,7 +7,7 @@ import os
 import re
 from typing import List, Dict, Optional
 from dotenv import load_dotenv
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import JsonOutputParser
@@ -30,16 +30,10 @@ class TimelineExtractor:
     
     def __init__(self):
         """Initialize the Timeline Extractor with Groq LLM"""
-        self.groq_api_key = os.getenv("GROQ_API_KEY")
-        
-        if not self.groq_api_key:
-            raise ValueError("GROQ_API_KEY not found in environment variables")
-        
-        # Initialize Groq LLM (using currently supported model)
-        self.llm = ChatGroq(
-            model="llama-3.3-70b-versatile",  # Updated to currently supported model
-            temperature=0.0,  # Deterministic for extraction
-            api_key=self.groq_api_key
+        # Initialize Ollama LLM
+        self.llm = ChatOllama(
+            model="llama3",
+            temperature=0.0
         )
         
         # Parser for structured output

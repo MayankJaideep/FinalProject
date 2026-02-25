@@ -6,7 +6,7 @@ This replaces the basic 6-feature extractor with advanced feature engineering.
 import re
 import os
 from typing import Dict, Optional
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 from datetime import datetime

@@ -18,40 +18,24 @@ load_dotenv()
 
 # --- CONFIGURATION ---
 INDIAN_KANOON_API = os.getenv("INDIAN_KANOON_API_TOKEN")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+# GROQ_API_KEY = os.getenv("GROQ_API_KEY") # Removed
+# GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") # Removed
 
 OUTPUT_PATH = "1-Rag/data/real_cases_rich.csv" # New rich dataset
 
 # --- LLM SETUP (Multi-Provider) ---
 def get_llm():
     """Get the best available LLM"""
-    if GROQ_API_KEY:
-        try:
-            from langchain_groq import ChatGroq
-            print("⚡ Using Groq (Llama-3) for Labeling...")
-            return ChatGroq(
-                model="llama-3.1-8b-instant",
-                temperature=0.0,
-                api_key=GROQ_API_KEY
-            )
-        except Exception as e:
-            print(f"⚠️ Groq Init Failed: {e}")
-
-    if GOOGLE_API_KEY:
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            print("✨ Using Google Gemini (Flash) for Labeling...")
-            return ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
-                temperature=0.0,
-                google_api_key=GOOGLE_API_KEY,
-                max_retries=3
-            )
-        except Exception as e:
-            print(f"⚠️ Gemini Init Failed: {e}")
-            
-    raise ValueError("No valid API Key found! Please set GOOGLE_API_KEY or GROQ_API_KEY.")
+    try:
+        from langchain_ollama import ChatOllama
+        print("⚡ Using Ollama (Llama-3) for Labeling...")
+        return ChatOllama(
+            model="llama3",
+            temperature=0.0
+        )
+    except Exception as e:
+        print(f"⚠️ Ollama Init Failed: {e}")
+        raise e
 
 # --- STRUCTURED EXTRACTION MODEL ---
 class DetailedCase(BaseModel):

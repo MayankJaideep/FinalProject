@@ -1,279 +1,480 @@
-import React, { useState } from 'react';
-import { Activity, Gavel, Scale, AlertTriangle, CheckCircle2, Zap, Clock, Loader2, AlertCircle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import { Scale, FileText, Activity, AlertTriangle, Loader2, ChevronRight, Gavel, Search, ArrowUpRight, ShieldCheck, Zap, TrendingUp, History, Section } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const API_URL = 'http://localhost:8000';
+const MOCK_RESULTS = {
+    analytics: {
+        winRate: 65,
+        avgDuration: "14 months",
+        judgeTendency: "Strict",
+        outcomes: [
+            { name: 'Allowance', value: 65, color: '#4F46E5' }, // Indigo
+            { name: 'Dismissal', value: 25, color: '#E11D48' }, // Rose
+            { name: 'Settlement', value: 10, color: '#94A3B8' }, // Slate
+        ]
+    },
+    cases: [
+        {
+            id: 1,
+            name: "Mehta v. Union of India",
+            year: 2024,
+            court: "Delhi High Court",
+            match: 94,
+            outcome: "Allowance",
+            factSimilarity: "High",
+            legalSimilarity: "High",
+            tags: ["Bail", "Medical Grounds", "PMLA"],
+            reason: "The court heavily weighed the medical documentation provided by the defense, establishing a strong precedent that age and specific medical conditions override standard PMLA bail restrictions."
+        },
+        {
+            id: 2,
+            name: "Suresh Trading vs State of Maharashtra",
+            year: 2023,
+            court: "Supreme Court",
+            match: 88,
+            outcome: "Dismissal",
+            factSimilarity: "Medium",
+            legalSimilarity: "High",
+            tags: ["Bail", "Economic Offense", "Flight Risk"],
+            reason: "While the medical grounds were similar, the court dismissed the application due to a lack of corroborating chronologies and the applicant being deemed a severe flight risk."
+        }
+    ]
+};
+
+const LEGAL_SECTIONS = [
+    "Section 138 NI Act",
+    "Section 420 IPC",
+    "IBC 2016",
+    "Contract Act",
+    "PMLA",
+    "Arbitration Act"
+];
+
+// Layout sections
+const SECTIONS = {
+    INPUT: 'input',
+    LOADING: 'loading',
+    RESULTS: 'results'
+};
 
 export default function Dashboard() {
     const [formData, setFormData] = useState({
         description: '',
-        court: '',
+        court: 'Delhi High Court',
         judge: '',
-        case_type: ''
+        sections: []
     });
-    const [useAdvancedModel, setUseAdvancedModel] = useState(true);
-    const [prediction, setPrediction] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
 
-    const handlePredict = async () => {
-        if (!formData.description) return;
-        setLoading(true);
-        setPrediction(null);
-        setError(null);
+    const [currentStep, setCurrentStep] = useState(SECTIONS.INPUT);
 
-        try {
-            const response = await axios.post(`${API_URL}/predict`, {
-                ...formData,
-                model_version: useAdvancedModel ? 'advanced' : 'legacy'
-            });
-            if (response.data.result.error) {
-                setError(response.data.result.error);
-                setPrediction(null);
-            } else {
-                setPrediction(response.data.result);
-            }
-        } catch (error) {
-            console.error('Prediction error:', error);
-            setError('Failed to generate prediction. Please ensure the API is running and try again.');
-        } finally {
-            setLoading(false);
-        }
+    // Auto-scroll to top when step changes
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [currentStep]);
+
+    const toggleSection = (sec) => {
+        setFormData(prev => ({
+            ...prev,
+            sections: prev.sections.includes(sec)
+                ? prev.sections.filter(s => s !== sec)
+                : [...prev.sections, sec]
+        }));
     };
 
-    const chartData = (prediction && prediction.probabilities) ? Object.entries(prediction.probabilities).map(([name, value]) => ({
-        name: name.replace('_', ' ').toUpperCase(),
-        value: parseFloat((value * 100).toFixed(1))
-    })) : [];
+    const handleAnalyze = () => {
+        if (!formData.description) return;
+        setCurrentStep(SECTIONS.LOADING);
 
-    const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444'];
+        // Simulate scanning
+        setTimeout(() => {
+            setCurrentStep(SECTIONS.RESULTS);
+        }, 2500);
+    };
+
+    const handleReset = () => {
+        setCurrentStep(SECTIONS.INPUT);
+        setFormData({
+            description: '',
+            court: 'Delhi High Court',
+            judge: '',
+            sections: []
+        });
+    };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Input Section */}
-            <div className="space-y-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                            <Scale className="text-blue-600" size={20} />
-                            Case Details
-                        </h3>
+        <div className="w-full max-w-5xl mx-auto py-12 px-6 lg:px-8 min-h-screen relative z-10 pb-32">
 
-                        {/* Model Toggle */}
-                        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-                            <button
-                                onClick={() => setUseAdvancedModel(false)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${!useAdvancedModel ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                Legacy (Regex)
-                            </button>
-                            <button
-                                onClick={() => setUseAdvancedModel(true)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${useAdvancedModel ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                Advanced (AI)
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Case Description <span className="text-red-500">*</span></label>
-                            <textarea
-                                rows={6}
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none bg-slate-50 focus:bg-white transition-colors"
-                                placeholder="Enter detailed summary of the case facts..."
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Court</label>
-                                <input
-                                    type="text"
-                                    value={formData.court}
-                                    onChange={(e) => setFormData({ ...formData, court: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="e.g. Supreme Court"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Judge</label>
-                                <input
-                                    type="text"
-                                    value={formData.judge}
-                                    onChange={(e) => setFormData({ ...formData, judge: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Name of Judge"
-                                />
-                            </div>
-                        </div>
-
-                        {error && (
-                            <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm flex items-center gap-2 border border-red-100">
-                                <AlertCircle size={16} />
-                                {error}
-                            </div>
-                        )}
-
-                        <button
-                            onClick={handlePredict}
-                            disabled={loading || !formData.description}
-                            className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="animate-spin" size={20} />
-                                    Analyzing Features...
-                                </>
-                            ) : (
-                                <>
-                                    <Zap size={18} />
-                                    Predict Outcome
-                                </>
-                            )}
-                        </button>
-                    </div>
+            {/* Header Area */}
+            <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-nyaya-border pb-8">
+                <div>
+                    <h1 className="text-4xl font-black text-nyaya-text tracking-tight mb-3">Precedent Engine</h1>
+                    <p className="text-nyaya-muted font-medium max-w-2xl text-[16px] leading-relaxed">Input your case parameters below to semantically search across millions of records. The engine will identify the most comparable historical cases and extract empirical strategies.</p>
                 </div>
+                {currentStep === SECTIONS.RESULTS && (
+                    <button
+                        onClick={handleReset}
+                        className="px-6 py-3 bg-nyaya-surface border border-nyaya-border rounded-xl text-nyaya-text font-bold text-sm shadow-sm hover:bg-nyaya-bg transition-colors whitespace-nowrap"
+                    >
+                        New Analysis
+                    </button>
+                )}
             </div>
 
-            {/* Results Section */}
-            <div className="space-y-6">
-                {prediction ? (
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full flex flex-col">
-                        <h3 className="text-lg font-semibold text-slate-800 mb-6 flex items-center gap-2">
-                            <Activity className="text-indigo-600" size={20} />
-                            Analysis Result
-                        </h3>
+            <AnimatePresence mode="wait">
 
-                        {/* Main Result Card */}
-                        <div className={`p-6 rounded-xl border mb-6 bg-gradient-to-br ${useAdvancedModel ? 'from-indigo-50 to-blue-50 border-indigo-100' : 'from-slate-50 to-gray-50 border-slate-200'}`}>
-                            <div className="flex items-start justify-between">
-                                <div>
-                                    <p className="text-sm text-slate-500 font-medium uppercase tracking-wide">Predicted Outcome</p>
-                                    <h2 className="text-3xl font-bold text-slate-900 mt-1 capitalize">
-                                        {prediction.predicted_outcome.replace('_', ' ')}
-                                    </h2>
-                                    <p className="text-lg text-slate-600 mt-2">
-                                        Confidence: <strong>{(prediction.confidence * 100).toFixed(1)}%</strong>
-                                    </p>
+                {/* ------------------------------------------------------------------------- */}
+                {/* STEP 1: INPUT FORM (Clean, Single Column) */}
+                {/* ------------------------------------------------------------------------- */}
+                {currentStep === SECTIONS.INPUT && (
+                    <motion.div
+                        key="input"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="space-y-10"
+                    >
+                        {/* Primary Input Container */}
+                        <div className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-10 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+
+                            <h2 className="text-xl font-bold text-nyaya-text mb-8 flex items-center gap-3">
+                                <FileText size={24} className="text-indigo-600" />
+                                1. Describe the Facts
+                            </h2>
+
+                            <div className="space-y-4 relative z-10">
+                                <textarea
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    rows={8}
+                                    className="w-full p-6 rounded-2xl bg-nyaya-bg/50 border border-nyaya-border text-[16px] text-nyaya-text focus:outline-none focus:border-indigo-400 focus:ring-[4px] focus:ring-indigo-500/10 resize-none transition-all placeholder:text-nyaya-muted/60 custom-scrollbar leading-relaxed"
+                                    placeholder="Detail the chronological events, key arguments, and context of the dispute here..."
+                                />
+                                <div className="flex justify-end text-[13px] font-semibold text-nyaya-muted">
+                                    {formData.description.length} characters (minimum 50 recommended)
                                 </div>
-                                <div className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm
-                  ${prediction.confidence_level === 'High' ? 'bg-green-100 text-green-700' :
-                                        prediction.confidence_level === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                                    {prediction.confidence_level} Confidence
-                                </div>
-                            </div>
-                            <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
-                                {useAdvancedModel ? (
-                                    <>
-                                        <Zap size={16} className="text-indigo-500" />
-                                        <span>Based on <strong>Stacking Ensemble</strong> (XGB+LGBM+RF) with InLegalBERT (88% Accuracy)</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Clock size={16} className="text-slate-400" />
-                                        <span>Based on <strong>Legacy Model</strong> (Metadata & rules)</span>
-                                    </>
-                                )}
                             </div>
                         </div>
 
-                        {/* Legal Metrics Grid */}
-                        {prediction.legal_metrics && (
-                            <div className="grid grid-cols-2 gap-3 mb-6">
-                                <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-lg p-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">Petitioner Win</span>
-                                        <CheckCircle2 size={16} className="text-green-600" />
+                        {/* Secondary Parameters Container */}
+                        <div className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-10 shadow-sm">
+                            <h2 className="text-xl font-bold text-nyaya-text mb-8 flex items-center gap-3">
+                                <Scale size={24} className="text-indigo-600" />
+                                2. Jurisdiction & Context
+                            </h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <label className="text-[14px] font-bold text-nyaya-text tracking-wide">Forum</label>
+                                    <div className="relative">
+                                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-nyaya-muted" />
+                                        <select
+                                            value={formData.court}
+                                            onChange={(e) => setFormData({ ...formData, court: e.target.value })}
+                                            className="w-full py-4 pl-12 pr-4 rounded-2xl bg-nyaya-bg/50 border border-nyaya-border text-[15px] font-medium text-nyaya-text focus:outline-none focus:border-indigo-400 focus:ring-[4px] focus:ring-indigo-500/10 transition-all appearance-none cursor-pointer"
+                                        >
+                                            <option value="Supreme Court">Supreme Court of India</option>
+                                            <option value="Delhi High Court">Delhi High Court</option>
+                                            <option value="Bombay High Court">Bombay High Court</option>
+                                            <option value="NCLT">National Company Law Tribunal</option>
+                                        </select>
                                     </div>
-                                    <p className="text-2xl font-bold text-green-900">{prediction.legal_metrics.petitioner_win_probability}%</p>
-                                    <p className="text-xs text-green-600 mt-1">Appeal/Petition Success</p>
                                 </div>
 
-                                <div className="bg-gradient-to-br from-red-50 to-rose-50 border border-red-100 rounded-lg p-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">Dismissal Risk</span>
-                                        <AlertTriangle size={16} className="text-red-600" />
-                                    </div>
-                                    <p className="text-2xl font-bold text-red-900">{prediction.legal_metrics.case_dismissal_risk}%</p>
-                                    <p className="text-xs text-red-600 mt-1">Case Rejected/Denied</p>
-                                </div>
-
-                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Respondent Win</span>
-                                        <Gavel size={16} className="text-blue-600" />
-                                    </div>
-                                    <p className="text-2xl font-bold text-blue-900">{prediction.legal_metrics.respondent_win_probability}%</p>
-                                    <p className="text-xs text-blue-600 mt-1">Defense Success</p>
-                                </div>
-
-                                <div className="bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-100 rounded-lg p-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Appeal Success</span>
-                                        <Scale size={16} className="text-purple-600" />
-                                    </div>
-                                    <p className="text-2xl font-bold text-purple-900">{prediction.legal_metrics.appeal_success_rate}%</p>
-                                    <p className="text-xs text-purple-600 mt-1">If Allowed/Granted</p>
+                                <div className="space-y-3">
+                                    <label className="text-[14px] font-bold text-nyaya-text tracking-wide">Presiding Coram (Optional)</label>
+                                    <input
+                                        type="text"
+                                        value={formData.judge}
+                                        onChange={(e) => setFormData({ ...formData, judge: e.target.value })}
+                                        placeholder="e.g. Hon'ble Justice D.Y. Chandrachud"
+                                        className="w-full p-4 rounded-2xl bg-nyaya-bg/50 border border-nyaya-border text-[15px] font-medium text-nyaya-text focus:outline-none focus:border-indigo-400 focus:ring-[4px] focus:ring-indigo-500/10 transition-all placeholder:text-nyaya-muted/60"
+                                    />
                                 </div>
                             </div>
-                        )}
 
-                        {/* Probability Table */}
-                        <div className="mb-6 bg-slate-50 rounded-lg p-4">
-                            <h4 className="text-sm font-semibold text-slate-700 mb-3">Outcome Probabilities</h4>
-                            <div className="space-y-2">
-                                {chartData.sort((a, b) => b.value - a.value).map((item, idx) => (
-                                    <div key={idx} className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-slate-700 capitalize">{item.name}</span>
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-32 bg-slate-200 rounded-full h-2">
-                                                <div
-                                                    className="h-2 rounded-full transition-all duration-500"
-                                                    style={{ width: `${item.value}%`, backgroundColor: COLORS[idx % COLORS.length] }}
+                            <div className="mt-10 space-y-4 border-t border-nyaya-border/50 pt-8">
+                                <label className="text-[14px] font-bold text-nyaya-text tracking-wide flex items-center gap-2">
+                                    Relevant Acts & Sections
+                                    <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full">{formData.sections.length} Selected</span>
+                                </label>
+                                <div className="flex flex-wrap gap-3">
+                                    {LEGAL_SECTIONS.map(sec => (
+                                        <button
+                                            key={sec}
+                                            onClick={() => toggleSection(sec)}
+                                            className={`px-5 py-3 rounded-xl text-[14px] font-bold transition-all border ${formData.sections.includes(sec)
+                                                    ? 'bg-nyaya-text text-nyaya-surface border-nyaya-text shadow-md hover:-translate-y-0.5'
+                                                    : 'bg-nyaya-surface text-nyaya-muted border-nyaya-border hover:border-indigo-300 hover:text-indigo-600'
+                                                }`}
+                                        >
+                                            {sec}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action Bar */}
+                        <div className="flex justify-end pt-4">
+                            <button
+                                onClick={handleAnalyze}
+                                disabled={!formData.description || formData.description.length < 10}
+                                className="px-10 py-5 bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-2xl font-black text-[16px] transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3 w-full md:w-auto min-w-[300px]"
+                            >
+                                <Zap size={20} />
+                                <span>Run Engine Analysis</span>
+                                <ChevronRight size={20} className="ml-2 opacity-50" />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+
+
+                {/* ------------------------------------------------------------------------- */}
+                {/* STEP 2: LOADING STATE */}
+                {/* ------------------------------------------------------------------------- */}
+                {currentStep === SECTIONS.LOADING && (
+                    <motion.div
+                        key="loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="h-[60vh] flex flex-col items-center justify-center bg-nyaya-surface rounded-[2rem] border border-nyaya-border relative overflow-hidden shadow-2xl"
+                    >
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 backdrop-blur-3xl animate-pulse"></div>
+
+                        <div className="relative z-10 flex flex-col items-center">
+                            <div className="w-32 h-32 mb-8 relative flex items-center justify-center">
+                                {/* Outer pulsating rings */}
+                                <div className="absolute inset-0 border-[6px] border-indigo-100 rounded-full"></div>
+                                <div className="absolute inset-0 border-[6px] border-indigo-600 rounded-full border-t-transparent animate-spin" style={{ animationDuration: '1.5s' }}></div>
+                                <div className="absolute inset-2 border-[4px] border-purple-400/30 rounded-full border-b-transparent animate-spin" style={{ animationDuration: '2s', animationDirection: 'reverse' }}></div>
+                                <Activity size={40} className="text-indigo-600" />
+                            </div>
+                            <h3 className="text-3xl font-black text-nyaya-text mb-4 tracking-tight">Mining Case Law</h3>
+                            <p className="text-nyaya-muted text-[16px] max-w-lg text-center leading-relaxed font-medium">
+                                Vectorizing your facts and evaluating semantic similarity across 5.4 million historic judgments to extract empirical analytics...
+                            </p>
+
+                            <div className="mt-12 flex gap-3 text-sm font-bold text-nyaya-text/60 animate-pulse">
+                                <div className="h-2 w-2 bg-indigo-500 rounded-full"></div>
+                                <div className="h-2 w-2 bg-indigo-500 rounded-full" style={{ animationDelay: '0.2s' }}></div>
+                                <div className="h-2 w-2 bg-indigo-500 rounded-full" style={{ animationDelay: '0.4s' }}></div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+
+                {/* ------------------------------------------------------------------------- */}
+                {/* STEP 3: FULL RESULTS (Scrolling Stack) */}
+                {/* ------------------------------------------------------------------------- */}
+                {currentStep === SECTIONS.RESULTS && (
+                    <motion.div
+                        key="results"
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-12"
+                    >
+                        {/* Summary Bar */}
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 flex items-center justify-between shadow-sm">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
+                                    <ShieldCheck size={24} className="text-emerald-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-[16px] font-black text-emerald-900 leading-tight">Analysis Complete</h3>
+                                    <p className="text-[14px] font-semibold text-emerald-700/80">Computed against High Court and Supreme Court registries.</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <span className="block text-3xl font-black text-emerald-600 leading-none">{MOCK_RESULTS.cases.length}</span>
+                                <span className="text-[12px] font-bold text-emerald-700/60 uppercase tracking-widest">Precedents Found</span>
+                            </div>
+                        </div>
+
+                        {/* ROW 1: MACRO INTELLIGENCE */}
+                        <section className="space-y-6">
+                            <h2 className="text-2xl font-black text-nyaya-text flex items-center gap-3">
+                                <TrendingUp size={24} className="text-indigo-600" />
+                                1. Macro Intelligence & Environment
+                            </h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Widget A: Donut */}
+                                <div className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-10 shadow-sm flex flex-col items-center">
+                                    <h3 className="text-[16px] font-bold text-nyaya-text mb-8 w-full">Historical Outcome Distribution</h3>
+                                    <div className="h-64 relative flex items-center justify-center w-full mb-8">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={MOCK_RESULTS.analytics.outcomes}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={80}
+                                                    outerRadius={110}
+                                                    paddingAngle={4}
+                                                    dataKey="value"
+                                                    stroke="none"
+                                                    cornerRadius={8}
+                                                >
+                                                    {MOCK_RESULTS.analytics.outcomes.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip
+                                                    formatter={(value) => `${value}%`}
+                                                    contentStyle={{ borderRadius: '12px', border: '1px solid #E0E7FF', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', padding: '16px', fontWeight: 'bold' }}
+                                                    itemStyle={{ fontWeight: 'bold', color: '#1E1B4B' }}
                                                 />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                            <span className="text-5xl font-black text-nyaya-text mb-2">{MOCK_RESULTS.analytics.winRate}%</span>
+                                            <span className="text-[12px] uppercase tracking-widest font-bold text-nyaya-muted">Allowance Rate</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center justify-center gap-6 w-full pt-6 border-t border-nyaya-border/50">
+                                        {MOCK_RESULTS.analytics.outcomes.map(item => (
+                                            <div key={item.name} className="flex items-center gap-2">
+                                                <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: item.color }}></div>
+                                                <span className="text-[14px] font-bold text-nyaya-text">{item.name}</span>
                                             </div>
-                                            <span className="text-sm font-bold text-slate-900 w-12 text-right">{item.value}%</span>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Widget B: Environmental Analytics */}
+                                <div className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-10 shadow-sm flex flex-col justify-between">
+                                    <div>
+                                        <h3 className="text-[16px] font-bold text-nyaya-text mb-8">Forum Analytics (Delhi High Court)</h3>
+
+                                        <div className="mb-10 p-6 bg-nyaya-bg/50 rounded-2xl border border-nyaya-border/50">
+                                            <div className="flex justify-between items-end mb-4">
+                                                <span className="text-[13px] font-bold text-nyaya-muted uppercase tracking-wider">Average Resolution Time</span>
+                                                <span className="text-3xl font-black text-nyaya-text">{MOCK_RESULTS.analytics.avgDuration}</span>
+                                            </div>
+                                            <div className="w-full bg-nyaya-surface rounded-full h-4 mb-3 border border-nyaya-border overflow-hidden shadow-inner">
+                                                <div className="bg-slate-400 h-full rounded-full" style={{ width: '60%' }}></div>
+                                            </div>
+                                            <p className="text-[13px] font-medium text-nyaya-muted">Based on analogous filings in the past 5 years.</p>
+                                        </div>
+
+                                        <div className="p-6 bg-nyaya-bg/50 rounded-2xl border border-nyaya-border/50">
+                                            <div className="flex justify-between items-end mb-4">
+                                                <span className="text-[13px] font-bold text-nyaya-muted uppercase tracking-wider flex items-center gap-2">
+                                                    Coram Tendency
+                                                    {formData.judge && <span className="bg-nyaya-surface text-nyaya-text px-2 py-0.5 rounded-md border border-nyaya-border">for {formData.judge}</span>}
+                                                </span>
+                                                <span className="text-3xl font-black text-nyaya-text">32%</span>
+                                            </div>
+                                            <div className="w-full bg-nyaya-surface rounded-full h-4 mb-4 border border-nyaya-border overflow-hidden shadow-inner flex">
+                                                <div className="bg-[#4F46E5] h-full transition-all" style={{ width: '32%' }}></div>
+                                                <div className="bg-[#E11D48] h-full transition-all" style={{ width: '68%' }}></div>
+                                            </div>
+                                            <div className="flex justify-between text-[12px] font-bold tracking-wider uppercase">
+                                                <span className="text-indigo-600">Pro-Allowance (32%)</span>
+                                                <span className="text-rose-600">Strict (68%)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div className="w-full h-px bg-nyaya-border my-8"></div>
+
+                        {/* ROW 2: COMPARABLE PRECEDENTS */}
+                        <section className="space-y-6">
+                            <h2 className="text-2xl font-black text-nyaya-text flex items-center justify-between">
+                                <span className="flex items-center gap-3">
+                                    <History size={24} className="text-indigo-600" />
+                                    2. Applicable Precedents
+                                </span>
+                            </h2>
+
+                            <div className="space-y-6">
+                                {MOCK_RESULTS.cases.map(item => (
+                                    <div key={item.id} className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-8 shadow-sm hover:shadow-lg transition-all duration-300 relative group overflow-hidden">
+
+                                        {/* Top Header */}
+                                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 border-b border-nyaya-border pb-6">
+                                            <div className="space-y-2">
+                                                <h3 className="text-xl font-black text-nyaya-text leading-tight group-hover:text-indigo-600 transition-colors cursor-pointer">{item.name}</h3>
+                                                <div className="flex flex-wrap items-center gap-4 text-[14px] font-bold text-nyaya-muted">
+                                                    <span className="flex items-center gap-1.5"><Gavel size={16} /> {item.court}</span>
+                                                    <span className="opacity-50">•</span>
+                                                    <span>{item.year}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-4 md:flex-col md:items-end md:gap-3 shrink-0">
+                                                <div className="bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-xl flex items-center gap-2">
+                                                    <Zap size={16} className="text-indigo-700" />
+                                                    <span className="text-[14px] font-black text-indigo-800">{item.match}% Semantic Match</span>
+                                                </div>
+                                                <span className={`px-4 py-2 rounded-xl text-[13px] font-black uppercase tracking-widest border
+                                                    ${item.outcome === 'Allowance' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                        item.outcome === 'Dismissal' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                                            'bg-slate-100 text-slate-700 border-slate-300'}`}>
+                                                    {item.outcome}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-8">
+                                            {/* Left: Metrics & Tags */}
+                                            <div className="md:col-span-4 space-y-6 border-r border-nyaya-border/50 pr-6">
+                                                <div className="space-y-4">
+                                                    <div className="bg-nyaya-bg rounded-xl p-4 border border-nyaya-border/50">
+                                                        <div className="text-[12px] font-bold text-nyaya-muted uppercase tracking-wider mb-2">Factual Alignment</div>
+                                                        <div className="text-[16px] font-black text-nyaya-text">{item.factSimilarity}</div>
+                                                    </div>
+                                                    <div className="bg-nyaya-bg rounded-xl p-4 border border-nyaya-border/50">
+                                                        <div className="text-[12px] font-bold text-nyaya-muted uppercase tracking-wider mb-2">Legal Principle</div>
+                                                        <div className="text-[16px] font-black text-nyaya-text">{item.legalSimilarity}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-3 pt-2">
+                                                    <div className="text-[12px] font-bold text-nyaya-muted uppercase tracking-wider">Identified Clusters</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {item.tags.map(tag => (
+                                                            <span key={tag} className="text-[12px] font-bold text-nyaya-text bg-white border border-nyaya-border px-3 py-1.5 rounded-lg shadow-sm">
+                                                                {tag}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Right: Synthesis */}
+                                            <div className="md:col-span-8 flex flex-col justify-center">
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <Activity size={18} className="text-indigo-600" />
+                                                    <h4 className="text-[14px] font-black text-nyaya-text tracking-wide uppercase">AI Extracted Ratio Decidendi</h4>
+                                                </div>
+                                                <p className="text-[16px] text-nyaya-text leading-relaxed font-medium bg-indigo-50/30 p-6 rounded-2xl border border-indigo-100 italic">
+                                                    "{item.reason}"
+                                                </p>
+
+                                                <div className="mt-8 flex justify-end">
+                                                    <button className="h-12 px-6 rounded-xl text-[14px] font-black text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 flex items-center gap-2 transition-all hover:shadow-md">
+                                                        Open Full Source <ArrowUpRight size={18} />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-
-                        {/* Chart */}
-                        <div className="flex-1 min-h-[240px]">
-                            <h4 className="text-sm font-medium text-slate-700 mb-4">Visual Distribution</h4>
-                            <ResponsiveContainer width="100%" height={240}>
-                                <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                    <XAxis type="number" domain={[0, 100]} unit="%" />
-                                    <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        cursor={{ fill: 'transparent' }}
-                                        formatter={(value) => `${value}%`}
-                                    />
-                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={32} animationDuration={1500}>
-                                        {chartData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="h-full bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 p-8">
-                        <Gavel size={48} className="mb-4 opacity-50" />
-                        <p className="font-medium">Ready to Analyze</p>
-                        <p className="text-sm mt-1">Enter details and select a model to generate prediction</p>
-                    </div>
+                        </section>
+                    </motion.div>
                 )}
-            </div>
+            </AnimatePresence>
         </div>
     );
 }

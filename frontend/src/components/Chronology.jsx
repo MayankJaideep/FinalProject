@@ -51,12 +51,16 @@ export default function Chronology() {
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10 w-full max-w-7xl mx-auto py-12 px-6">
             {/* Left Panel: Input */}
             <div className="lg:col-span-1 space-y-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                        <FileText className="text-blue-600" size={20} />
+                <div className="bg-nyaya-surface border border-nyaya-border rounded-3xl p-8 relative overflow-hidden shadow-2xl">
+                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-nyaya-accent/50 to-nyaya-primary/50"></div>
+
+                    <h3 className="text-xl font-medium text-nyaya-text mb-8 flex items-center gap-3 relative z-10">
+                        <div className="p-2 bg-nyaya-bg border border-nyaya-border rounded-xl">
+                            <FileText className="text-nyaya-text" size={20} />
+                        </div>
                         Case Document
                     </h3>
 
@@ -64,7 +68,7 @@ export default function Chronology() {
                         value={caseText}
                         onChange={(e) => setCaseText(e.target.value)}
                         rows={16}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none bg-slate-50 focus:bg-white transition-colors text-sm"
+                        className="w-full px-5 py-4 rounded-2xl bg-nyaya-bg border border-nyaya-border text-nyaya-text placeholder-nyaya-muted/50 focus:outline-none focus:border-nyaya-primary/50 focus:ring-1 focus:ring-nyaya-primary/30 transition-all resize-none text-[15px] leading-relaxed shadow-inner relative z-10 custom-scrollbar"
                         placeholder="Paste your FIR, Judgment, or any legal document containing dates and events...
 
 Example:
@@ -72,33 +76,33 @@ Example:
                     />
 
                     {error && (
-                        <div className="mt-3 p-3 bg-red-50 text-red-700 rounded-lg text-sm flex items-center gap-2 border border-red-100">
-                            <AlertCircle size={16} />
-                            {error}
+                        <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-3 border border-red-200 backdrop-blur-sm relative z-10">
+                            <AlertCircle size={18} className="shrink-0" />
+                            <span className="text-sm font-medium">{error}</span>
                         </div>
                     )}
 
                     {message && !error && timeline.length > 0 && (
-                        <div className="mt-3 p-3 bg-green-50 text-green-700 rounded-lg text-sm flex items-center gap-2 border border-green-100">
-                            <CheckCircle2 size={16} />
-                            {message}
+                        <div className="mt-4 p-4 bg-green-50 text-green-700 rounded-xl flex items-center gap-3 border border-green-200 backdrop-blur-sm relative z-10">
+                            <CheckCircle2 size={18} className="shrink-0" />
+                            <span className="text-sm font-medium">{message}</span>
                         </div>
                     )}
 
-                    <div className="mt-4 flex gap-3">
+                    <div className="mt-8 flex gap-4 relative z-10">
                         <button
                             onClick={handleGenerateTimeline}
                             disabled={loading || !caseText}
-                            className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+                            className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 rounded-2xl font-bold transition-all disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-[0.98]"
                         >
                             {loading ? (
                                 <>
-                                    <Loader2 className="animate-spin" size={18} />
+                                    <Loader2 className="animate-spin" size={20} />
                                     Extracting Events...
                                 </>
                             ) : (
                                 <>
-                                    <Calendar size={18} />
+                                    <Calendar size={20} />
                                     Generate Timeline
                                 </>
                             )}
@@ -107,73 +111,80 @@ Example:
                         {timeline.length > 0 && (
                             <button
                                 onClick={handleClear}
-                                className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-all"
+                                className="px-6 py-4 bg-nyaya-bg text-nyaya-text rounded-2xl font-bold hover:bg-nyaya-surface transition-all border border-nyaya-border"
                             >
                                 Clear
                             </button>
                         )}
                     </div>
 
-                    <div className="mt-4 text-xs text-slate-500">
-                        <p className="font-medium text-slate-600 mb-1">💡 Tips for best results:</p>
-                        <ul className="list-disc list-inside space-y-1 ml-2">
-                            <li>Include specific dates (DD/MM/YYYY format works best)</li>
-                            <li>Paste complete paragraphs with context</li>
-                            <li>Works with FIRs, Judgments, Case summaries</li>
+                    <div className="mt-8 p-6 bg-nyaya-bg rounded-2xl border border-nyaya-border relative z-10 shadow-inner">
+                        <p className="font-bold text-xs text-nyaya-muted uppercase tracking-widest mb-3">💡 Extraction Tips:</p>
+                        <ul className="space-y-2 ml-1 text-[13px] text-nyaya-muted font-medium">
+                            <li className="flex gap-2 items-start"><span className="text-nyaya-primary mt-0.5">•</span> Include specific dates (DD/MM/YYYY)</li>
+                            <li className="flex gap-2 items-start"><span className="text-nyaya-primary mt-0.5">•</span> Paste complete paragraphs</li>
+                            <li className="flex gap-2 items-start"><span className="text-nyaya-primary mt-0.5">•</span> Works with FIRs & Judgments</li>
                         </ul>
                     </div>
                 </div>
             </div>
 
             {/* Right Panel: Timeline Visualization */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 h-[850px]">
                 {!loading && timeline.length === 0 ? (
-                    <div className="h-full bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 p-12">
-                        <Clock size={64} className="mb-4 opacity-50" />
-                        <p className="font-medium text-lg">Ready to Visualize</p>
-                        <p className="text-sm mt-1 text-center max-w-md">
-                            Paste your case text and click "Generate Timeline" to extract and visualize chronological events
+                    <div className="h-full bg-nyaya-surface border border-nyaya-border rounded-3xl p-12 flex flex-col items-center justify-center relative overflow-hidden text-center shadow-2xl">
+                        <div className="w-24 h-24 bg-nyaya-bg rounded-full border border-nyaya-border flex items-center justify-center mb-8 shadow-inner">
+                            <Clock size={32} className="text-nyaya-muted/50" />
+                        </div>
+                        <h3 className="text-2xl font-medium text-nyaya-text mb-4">Ready to Visualize</h3>
+                        <p className="text-base text-nyaya-muted max-w-sm text-balance leading-relaxed">
+                            Paste your case text and click "Generate Timeline" to extract and visualize chronological events.
                         </p>
                     </div>
                 ) : loading ? (
-                    <div className="h-full bg-white rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center p-12">
-                        <div className="text-center">
-                            <Loader2 className="animate-spin text-blue-600 mx-auto mb-4" size={48} />
-                            <p className="text-slate-600 font-medium">Analyzing case chronology...</p>
-                            <p className="text-sm text-slate-400 mt-2">Using AI to extract dates and events</p>
+                    <div className="h-full bg-nyaya-surface border border-nyaya-border rounded-3xl p-12 flex flex-col items-center justify-center relative overflow-hidden text-center shadow-2xl">
+                        <div className="text-center relative z-10 flex flex-col items-center">
+                            <Loader2 className="animate-spin text-nyaya-primary mb-6" size={48} />
+                            <h3 className="text-xl font-medium text-nyaya-text mb-2">Analyzing case chronology...</h3>
+                            <p className="text-[15px] text-nyaya-muted">Using AI to extract dates and conceptual events</p>
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full flex flex-col">
-                        <h3 className="text-lg font-semibold text-slate-800 mb-6 flex items-center gap-2">
-                            <Calendar className="text-indigo-600" size={20} />
-                            Case Chronology ({timeline.length} Events)
+                    <div className="bg-nyaya-surface border border-nyaya-border rounded-3xl p-8 h-full flex flex-col relative overflow-hidden shadow-2xl">
+                        <h3 className="text-2xl font-medium text-nyaya-text mb-8 flex items-center gap-3 relative z-10">
+                            <div className="w-10 h-10 rounded-xl bg-nyaya-bg border border-nyaya-border flex items-center justify-center">
+                                <Calendar className="text-nyaya-primary" size={20} />
+                            </div>
+                            Case Chronology
+                            <span className="text-[11px] font-bold bg-nyaya-bg text-nyaya-muted px-3 py-1.5 rounded-full border border-nyaya-border tracking-widest uppercase ml-2">{timeline.length} Events</span>
                         </h3>
 
-                        <div className="flex-1 overflow-auto">
+                        <div className="flex-1 overflow-y-auto relative z-10 pr-4 custom-scrollbar">
                             {/* Custom Vertical Timeline */}
-                            <div className="relative">
+                            <div className="relative pt-4">
                                 {/* Vertical Line*/}
-                                <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-slate-200"></div>
+                                <div className="absolute left-8 top-4 bottom-4 w-px bg-gradient-to-b from-nyaya-primary/50 via-nyaya-border to-transparent"></div>
 
                                 {timeline.map((event, index) => (
-                                    <div key={index} className="relative mb-8 pl-20">
+                                    <div key={index} className="relative mb-10 pl-24 group">
                                         {/* Date Circle */}
-                                        <div className="absolute left-0 flex items-center">
-                                            <div className={`w-16 h-16 rounded-full flex items-center justify-center ${selectedEvent === event
-                                                    ? 'bg-blue-600 text-white ring-4 ring-blue-100'
-                                                    : 'bg-white border-2 border-slate-300 text-slate-600'
-                                                } shadow-md z-10 cursor-pointer transition-all hover:scale-110`}
+                                        <div className="absolute left-0 flex flex-col items-center h-full">
+                                            <div
+                                                className={`w-[4.5rem] h-[4.5rem] rounded-2xl flex items-center justify-center relative z-10 cursor-pointer transition-all duration-300
+                                                ${selectedEvent === event
+                                                        ? 'bg-nyaya-text text-nyaya-bg shadow-glow scale-[1.05]'
+                                                        : 'bg-nyaya-bg border border-nyaya-border text-nyaya-muted hover:border-nyaya-primary/50 hover:text-nyaya-text group-hover:bg-nyaya-surface'
+                                                    }`}
                                                 onClick={() => setSelectedEvent(event)}
                                             >
                                                 <div className="text-center">
-                                                    <div className="text-xs font-bold">
-                                                        {event.date !== 'Unknown' && event.date.split('-')[2]}
+                                                    <div className="text-lg font-black tracking-tighter">
+                                                        {event.date !== 'Unknown' ? event.date.split('-')[2] : '?'}
                                                     </div>
-                                                    <div className="text-[10px]">
+                                                    <div className="text-[9px] font-bold uppercase tracking-[0.2em] mt-0.5 opacity-80">
                                                         {event.date !== 'Unknown'
                                                             ? new Date(event.date).toLocaleDateString('en-US', { month: 'short' })
-                                                            : '?'
+                                                            : 'UNK'
                                                         }
                                                     </div>
                                                 </div>
@@ -182,19 +193,27 @@ Example:
 
                                         {/* Event Card */}
                                         <div
-                                            className={`bg-slate-50 border rounded-xl p-4 cursor-pointer transition-all ${selectedEvent === event
-                                                    ? 'border-blue-500 shadow-lg scale-[1.02]'
-                                                    : 'border-slate-200 hover:border-blue-300 hover:shadow-md'
+                                            className={`bg-nyaya-bg border rounded-2xl p-6 cursor-pointer transition-all duration-300 relative overflow-hidden
+                                                ${selectedEvent === event
+                                                    ? 'border-nyaya-primary/50 shadow-lg shadow-nyaya-primary/5 bg-nyaya-primary/5'
+                                                    : 'border-nyaya-border hover:border-nyaya-muted/30 hover:bg-nyaya-surface group-hover:-translate-y-1'
                                                 }`}
                                             onClick={() => setSelectedEvent(event)}
                                         >
-                                            <div className="flex items-start justify-between mb-2">
-                                                <h4 className="font-semibold text-slate-800 flex-1">{event.title}</h4>
+                                            {selectedEvent === event && (
+                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-nyaya-primary rounded-l-2xl"></div>
+                                            )}
+                                            <div className="flex items-start justify-between mb-3">
+                                                <h4 className={`font-medium text-base md:text-lg flex-1 pr-4 leading-snug 
+                                                    ${selectedEvent === event ? 'text-nyaya-primary' : 'text-nyaya-text'}`}>
+                                                    {event.title}
+                                                </h4>
                                                 {selectedEvent === event && (
-                                                    <ChevronRight className="text-blue-600 flex-shrink-0" size={20} />
+                                                    <ChevronRight className="text-nyaya-primary flex-shrink-0 mt-1" size={20} />
                                                 )}
                                             </div>
-                                            <div className="text-xs text-slate-500 mb-2">
+                                            <div className="text-[10px] font-bold uppercase tracking-widest text-nyaya-muted mb-4 flex items-center gap-2">
+                                                <Calendar size={12} className={selectedEvent === event ? 'text-nyaya-primary/70' : ''} />
                                                 {event.date !== 'Unknown'
                                                     ? new Date(event.date).toLocaleDateString('en-US', {
                                                         weekday: 'long',
@@ -205,7 +224,10 @@ Example:
                                                     : 'Date Unknown'
                                                 }
                                             </div>
-                                            <p className="text-sm text-slate-600 line-clamp-2">{event.description}</p>
+                                            <p className={`text-[14px] line-clamp-2 leading-relaxed font-medium 
+                                                ${selectedEvent === event ? 'text-nyaya-text/90' : 'text-nyaya-muted'}`}>
+                                                {event.description}
+                                            </p>
                                         </div>
                                     </div>
                                 ))}
@@ -214,18 +236,20 @@ Example:
 
                         {/* Selected Event Detail (Bottom) */}
                         {selectedEvent && (
-                            <div className="mt-6 pt-6 border-t border-slate-200">
-                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4">
-                                    <div className="flex items-start justify-between mb-2">
-                                        <h4 className="font-bold text-slate-900">{selectedEvent.title}</h4>
-                                        <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
+                            <div className="mt-6 pt-6 border-t border-nyaya-border relative z-10">
+                                <div className="bg-nyaya-bg rounded-2xl p-8 border border-nyaya-border relative overflow-hidden text-left shadow-inner">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-nyaya-primary/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+
+                                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 relative z-10 mb-6 border-b border-nyaya-border/50 pb-6">
+                                        <h4 className="font-medium text-nyaya-text text-xl max-w-xl leading-tight">{selectedEvent.title}</h4>
+                                        <span className="text-[10px] font-black bg-nyaya-text text-nyaya-bg px-4 py-2 rounded-lg tracking-widest uppercase whitespace-nowrap self-start shadow-glow">
                                             {selectedEvent.date !== 'Unknown'
                                                 ? selectedEvent.date
                                                 : 'Date Unknown'
                                             }
                                         </span>
                                     </div>
-                                    <p className="text-sm text-slate-700 leading-relaxed">{selectedEvent.description}</p>
+                                    <p className="text-[15px] text-nyaya-muted leading-loose relative z-10 font-medium">{selectedEvent.description}</p>
                                 </div>
                             </div>
                         )}

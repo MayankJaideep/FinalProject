@@ -43,7 +43,6 @@ cat .env
 
 Should show:
 ```
-GROQ_API_KEY=your_groq_key
 INDIAN_KANOON_API_TOKEN=your_indian_kanoon_token
 ```
 

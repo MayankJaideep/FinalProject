@@ -7,6 +7,8 @@ import uvicorn
 import shutil
 import numpy as np
 from langchain_community.vectorstores import FAISS
+from pymilvus import MilvusClient
+from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -44,6 +46,8 @@ state = AppState()
 class ChatRequest(BaseModel):
     message: str
     history: List[Dict[str, str]] = []
+    language: str = "en"
+    jurisdiction: str = "All"
 
 class ChatResponse(BaseModel):
     response: str
@@ -59,6 +63,58 @@ class PredictionRequest(BaseModel):
 
 class PredictionResponse(BaseModel):
     result: Dict[str, Any]
+
+class MilvusLiteWrapper:
+    """Wrapper for MilvusClient to mimic LangChain VectorStore interface for similarity_search"""
+    def __init__(self, uri, collection_name, embedding_func):
+        self.client = MilvusClient(uri=uri)
+        self.collection_name = collection_name
+        self.embedding_func = embedding_func
+
+    def similarity_search(self, query: str, k: int = 4, **kwargs) -> List[Any]:
+        # Generate embedding
+        query_vec = self.embedding_func.embed_query(query)
+        
+        filter_expr = kwargs.get('filter')
+        
+        # Search
+        res = self.client.search(
+            collection_name=self.collection_name,
+            data=[query_vec],
+            limit=k,
+            filter=filter_expr,
+            output_fields=["text_content", "filename", "page_number", "modality", "jurisdiction"]
+        )
+        
+        documents = []
+        if not res:
+            return documents
+            
+        for hit in res[0]:
+            entity = hit['entity']
+            # Milvus Lite returns entity in 'entity' key usually, or at top level depending on version?
+            # MilvusClient search result is list of list of dicts.
+            # Dict keys: id, distance, entity={...}
+            
+            content = entity.get('text_content', '')
+            meta = {
+                "source": entity.get('filename'),
+                "page": entity.get('page_number'),
+                "modality": entity.get('modality'),
+                "score": hit.get('distance')
+            }
+            documents.append(Document(page_content=content, metadata=meta))
+            
+        return documents
+
+    @property
+    def docstore(self):
+        # Mocking docstore for BM25 (simplified)
+        # We can't easily fetch all docs from Milvus without iterator. 
+        # Returning empty to skip BM25 for now or implement scroll if needed.
+        class MockDocstore:
+            _dict = {}
+        return MockDocstore()
 
 def update_bm25_index():
     """Helper to rebuild BM25 index from Vector Store documents"""
@@ -102,14 +158,42 @@ async def startup_event():
             )
         
         # Load Vector Store
-        if os.path.exists("faiss_store"):
-            state.vector_store = FAISS.load_local(
+        # Since running from 1-Rag/, we need to go up one level
+        milvus_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "services", "ingestion", "milvus_demo.db"))
+        print(f"DEBUG: Checking for Milvus DB at {milvus_db_path}")
+        if os.path.exists(milvus_db_path):
+             print(f"✅ Found Milvus DB at {milvus_db_path}")
+             # Use the same embedding model as ingestion
+             state.embeddings_model = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/clip-ViT-B-32-multilingual-v1",
+                model_kwargs={"device": "cpu"}
+             )
+             print("✅ Embeddings Model Loaded (CLIP Multilingual)")
+             
+             try:
+                 state.vector_store = MilvusLiteWrapper(
+                    uri=milvus_db_path,
+                    collection_name="legal_rag_multimodal",
+                    embedding_func=state.embeddings_model
+                 )
+                 print("✅ Milvus Vector Store Loaded (Custom Wrapper)")
+             except Exception as e:
+                 print(f"❌ Failed to load Milvus Wrapper: {e}")
+             
+        elif os.path.exists("faiss_store"):
+            # Fallback to legacy FAISS
+            # Load default embeddings for FAISS if not CLIP
+             state.embeddings_model = HuggingFaceEmbeddings(
+                model_name="law-ai/InLegalBERT", 
+                model_kwargs={"device": "cpu"}
+            )
+             state.vector_store = FAISS.load_local(
                 "faiss_store", state.embeddings_model, allow_dangerous_deserialization=True
             )
-            print("✅ Vector Store Loaded")
+             print("✅ Vector Store Loaded (FAISS)")
             
             # Build BM25
-            update_bm25_index()
+             update_bm25_index()
             
         else:
             print("⚠️ Vector Store not found. Upload PDFs to initialize.")
@@ -129,6 +213,20 @@ async def health_check():
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     try:
+        # --- TRANSLATION (Source to English) ---
+        if request.language and request.language != 'en':
+            try:
+                from deep_translator import GoogleTranslator
+                translated = GoogleTranslator(source='auto', target='en').translate(request.message)
+                request.message = translated
+                print(f"🌐 Translated to English: {request.message}")
+            except Exception as e:
+                print(f"⚠️ Translation to English failed: {e}")
+
+        # --- JURISDICTION CONTEXT ---
+        if request.jurisdiction and request.jurisdiction != "All":
+            request.message = f"[Jurisdiction Context: {request.jurisdiction}] {request.message}"
+            
         # --- SEMANTIC CACHE LOOKUP ---
         query_vec = np.array(state.embeddings_model.embed_query(request.message))
         
@@ -163,11 +261,19 @@ async def chat_endpoint(request: ChatRequest):
         
         # Convert history
         langchain_history = []
-        for msg in request.history[-10:]:
+        for msg in request.history[-4:]:  # Limit to last 4 to avoid translation latency
+            content = msg['content']
+            if request.language and request.language != 'en':
+                try:
+                    from deep_translator import GoogleTranslator
+                    content = GoogleTranslator(source='auto', target='en').translate(content)
+                except Exception as e:
+                    print(f"⚠️ History translation failed: {e}")
+            
             if msg['role'] == 'user':
-                langchain_history.append(HumanMessage(content=msg['content']))
+                langchain_history.append(HumanMessage(content=content))
             elif msg['role'] == 'assistant':
-                langchain_history.append(AIMessage(content=msg['content']))
+                langchain_history.append(AIMessage(content=content))
         
         langchain_history.append(HumanMessage(content=request.message))
         
@@ -175,6 +281,16 @@ async def chat_endpoint(request: ChatRequest):
         final_state = agent_executor.invoke(initial_state)
         
         final_message = final_state["messages"][-1].content
+        
+        # --- TRANSLATION (English to Target) ---
+        if request.language and request.language != 'en':
+            try:
+                from deep_translator import GoogleTranslator
+                # deep-translator handles limits up to 5000 chars natively for Google Translate
+                final_message = GoogleTranslator(source='en', target=request.language).translate(final_message)
+                print(f"🌐 Translated response back to target language")
+            except Exception as e:
+                print(f"⚠️ Translation to {request.language} failed: {e}")
         
         sources = []
         for msg in final_state["messages"]:
@@ -205,27 +321,107 @@ async def chat_endpoint(request: ChatRequest):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/predict")
-async def predict_endpoint(request: PredictionRequest):
+class SimilarityRequest(BaseModel):
+    description: str
+    jurisdiction: Optional[str] = "All"
+
+@app.post("/similar_cases")
+async def similar_cases_endpoint(request: SimilarityRequest):
     try:
-        features = {
-            "description": request.description,
-            "court": request.court or "",
-            "judge": request.judge or "",
-            "case_type": request.case_type or ""
+        if not state.vector_store:
+            raise HTTPException(status_code=500, detail="Vector store not initialized. Upload documents first.")
+            
+        # 1. Retrieve top 5 most similar cases
+        filter_expr = f"jurisdiction == '{request.jurisdiction}'" if request.jurisdiction and request.jurisdiction != "All" else None
+        
+        # We need raw similarity search to get the Document objects
+        similar_docs = state.vector_store.similarity_search(request.description, k=5, filter=filter_expr)
+        
+        if not similar_docs:
+            return {
+                "distribution": "No sufficiently similar cases found in the database.",
+                "precedents": []
+            }
+            
+        # 2. Extract snippets and metadata for the frontend
+        precedents = []
+        context_blocks = []
+        for i, doc in enumerate(similar_docs):
+            source = doc.metadata.get('source', 'Unknown Document')
+            page = doc.metadata.get('page', '?')
+            snippet = doc.page_content[:800] # Limit size
+            
+            precedents.append({
+                "id": i + 1,
+                "source": source,
+                "page": page,
+                "snippet": snippet
+            })
+            
+            context_blocks.append(f"CASE {i+1} [{source}]:\n{snippet}\n")
+            
+        # 3. Use LLM to analyze the outcomes of these specific cases
+        from langchain_ollama import ChatOllama
+        from langchain_core.messages import SystemMessage, HumanMessage
+        
+        llm = ChatOllama(model="llama3", temperature=0.1)
+        
+        analysis_prompt = f"""You are a legal expert analyzing historical precedents. 
+Given the user's case description and {len(similar_docs)} similar historical cases retrieved from the database, provide two things:
+
+1. OVERALL DISTRIBUTION: A 2-sentence summary of how these types of cases generally conclude based ONLY on the provided precedents (e.g. "Most similar cases resulted in dismissal due to lack of evidence. However, one case awarded damages.").
+2. PRECEDENT OUTCOMES: For each of the {len(similar_docs)} cases, write exactly ONE sentence explaining what happened in that specific case.
+
+User's Case: {request.description}
+
+--- RETRIEVED PRECEDENTS ---
+{"".join(context_blocks)}
+
+FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
+OVERALL DISTRIBUTION: [Your 2 sentence summary]
+CASE 1 OUTCOME: [1 sentence]
+CASE 2 OUTCOME: [1 sentence]
+...etc
+"""
+        messages = [HumanMessage(content=analysis_prompt)]
+        response = llm.invoke(messages)
+        
+        # Parse the LLM response to send cleanly to frontend
+        response_text = response.content
+        
+        distribution = "Analysis unavailable."
+        
+        if "OVERALL DISTRIBUTION:" in response_text:
+            parts = response_text.split("CASE 1 OUTCOME:")
+            distribution = parts[0].replace("OVERALL DISTRIBUTION:", "").strip()
+            
+            # Try to attach the 1-sentence outcomes to the precedent objects
+            if len(parts) > 1:
+                outcomes_text = "CASE 1 OUTCOME:" + parts[1]
+                for i in range(len(precedents)):
+                    outcome_marker = f"CASE {i+1} OUTCOME:"
+                    next_marker = f"CASE {i+2} OUTCOME:"
+                    
+                    if outcome_marker in outcomes_text:
+                        start_idx = outcomes_text.find(outcome_marker) + len(outcome_marker)
+                        end_idx = outcomes_text.find(next_marker) if next_marker in outcomes_text else len(outcomes_text)
+                        
+                        precedents[i]["outcome_summary"] = outcomes_text[start_idx:end_idx].strip()
+                    else:
+                        precedents[i]["outcome_summary"] = "Outcome unclear from text."
+        else:
+             distribution = response_text # Fallback
+             for p in precedents:
+                 p["outcome_summary"] = "See detailed snippet."
+        
+        return {
+            "distribution": distribution,
+            "precedents": precedents
         }
         
-        from enhanced_feature_extractor import EnhancedFeatureExtractor
-        extractor = EnhancedFeatureExtractor()
-        extracted_features = extractor.extract_all_features(request.description)
-        extracted_features.update({k:v for k,v in features.items() if v})
-        
-        predictor = OutcomePredictor(model_dir="models")
-        result = predictor.predict(extracted_features, model_version=request.model_version)
-        
-        return {"result": result}
-        
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload")

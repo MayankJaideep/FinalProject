@@ -1,0 +1,15 @@
+fastapi>=0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.6
+pymilvus>=2.4.0
+milvus-lite>=2.4.0
+torch
+transformers
+Pillow
+pypdf
+pdf2image
+sentence-transformers
+numpy
+requests
+pytesseract
+annotated-doc

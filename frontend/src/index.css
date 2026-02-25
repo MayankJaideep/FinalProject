@@ -1,11 +1,58 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* Custom colors for soft colorful light theme */
+  --color-nyaya-bg: #EEF2FF;
+  /* Indigo 50 */
+  --color-nyaya-surface: #FFFFFF;
+  /* White */
+  --color-nyaya-border: #E0E7FF;
+  /* Indigo 100 */
+  --color-nyaya-text: #1E1B4B;
+  /* Indigo 950 */
+  --color-nyaya-muted: #6366F1;
+  /* Indigo 500 */
+  --color-nyaya-primary: #4F46E5;
+  /* Indigo 600 */
+  --color-nyaya-accent: #8B5CF6;
+  /* Violet 500 */
+
+  /* Custom shadows for soft light theme */
+  --shadow-glow: 0 0 40px -10px rgba(79, 70, 229, 0.15);
+  --shadow-glass: 0 8px 32px 0 rgba(79, 70, 229, 0.08);
 }
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   body {
-    @apply antialiased text-gray-900 bg-gray-50;
+    @apply antialiased text-nyaya-text bg-nyaya-bg selection:bg-nyaya-accent/20 selection:text-nyaya-text;
+  }
+
+  /* Smooth scrolling for anchor links */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom subtle scrollbar for light theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #EEF2FF;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #C7D2FE;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #818CF8;
   }
 }
