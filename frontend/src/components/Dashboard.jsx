@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Scale, FileText, Activity, AlertTriangle, Loader2, ChevronRight, Gavel, Search, ArrowUpRight, ShieldCheck, Zap, TrendingUp, History, Section } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 
 const MOCK_RESULTS = {
     analytics: {
@@ -67,6 +68,8 @@ export default function Dashboard() {
     });
 
     const [currentStep, setCurrentStep] = useState(SECTIONS.INPUT);
+    const [results, setResults] = useState(null);
+    const [error, setError] = useState(null);
 
     // Auto-scroll to top when step changes
     useEffect(() => {
@@ -82,18 +85,31 @@ export default function Dashboard() {
         }));
     };
 
-    const handleAnalyze = () => {
+    const handleAnalyze = async () => {
         if (!formData.description) return;
         setCurrentStep(SECTIONS.LOADING);
+        setError(null);
 
-        // Simulate scanning
-        setTimeout(() => {
+        try {
+            const response = await axios.post(`http://localhost:8000/similar_cases`, {
+                description: formData.description,
+                jurisdiction: formData.court
+            });
+
+            // Set dynamic results from backend
+            setResults(response.data);
             setCurrentStep(SECTIONS.RESULTS);
-        }, 2500);
+        } catch (err) {
+            console.error('Analysis error:', err);
+            setError(err.response?.data?.detail || 'Failed to analyze cases. Make sure the backend FAISS store is populated.');
+            setCurrentStep(SECTIONS.INPUT);
+        }
     };
 
     const handleReset = () => {
         setCurrentStep(SECTIONS.INPUT);
+        setResults(null);
+        setError(null);
         setFormData({
             description: '',
             court: 'Delhi High Court',
@@ -134,6 +150,18 @@ export default function Dashboard() {
                         exit={{ opacity: 0, y: -20 }}
                         className="space-y-10"
                     >
+                        {error && (
+                            <div className="bg-rose-50 border border-rose-200 text-rose-700 px-6 py-4 rounded-2xl flex items-center justify-between shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <AlertTriangle size={20} className="text-rose-600" />
+                                    <span className="font-bold text-[14px]">{error}</span>
+                                </div>
+                                <button onClick={() => setError(null)} className="text-rose-400 hover:text-rose-600">
+                                    &times;
+                                </button>
+                            </div>
+                        )}
+
                         {/* Primary Input Container */}
                         <div className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-10 shadow-sm relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
@@ -205,8 +233,8 @@ export default function Dashboard() {
                                             key={sec}
                                             onClick={() => toggleSection(sec)}
                                             className={`px-5 py-3 rounded-xl text-[14px] font-bold transition-all border ${formData.sections.includes(sec)
-                                                    ? 'bg-nyaya-text text-nyaya-surface border-nyaya-text shadow-md hover:-translate-y-0.5'
-                                                    : 'bg-nyaya-surface text-nyaya-muted border-nyaya-border hover:border-indigo-300 hover:text-indigo-600'
+                                                ? 'bg-nyaya-text text-nyaya-surface border-nyaya-text shadow-md hover:-translate-y-0.5'
+                                                : 'bg-nyaya-surface text-nyaya-muted border-nyaya-border hover:border-indigo-300 hover:text-indigo-600'
                                                 }`}
                                         >
                                             {sec}
@@ -290,7 +318,7 @@ export default function Dashboard() {
                                 </div>
                             </div>
                             <div className="text-right">
-                                <span className="block text-3xl font-black text-emerald-600 leading-none">{MOCK_RESULTS.cases.length}</span>
+                                <span className="block text-3xl font-black text-emerald-600 leading-none">{results.cases.length}</span>
                                 <span className="text-[12px] font-bold text-emerald-700/60 uppercase tracking-widest">Precedents Found</span>
                             </div>
                         </div>
@@ -310,7 +338,7 @@ export default function Dashboard() {
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
-                                                    data={MOCK_RESULTS.analytics.outcomes}
+                                                    data={results.analytics.outcomes}
                                                     cx="50%"
                                                     cy="50%"
                                                     innerRadius={80}
@@ -320,7 +348,7 @@ export default function Dashboard() {
                                                     stroke="none"
                                                     cornerRadius={8}
                                                 >
-                                                    {MOCK_RESULTS.analytics.outcomes.map((entry, index) => (
+                                                    {results.analytics.outcomes.map((entry, index) => (
                                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                                     ))}
                                                 </Pie>
@@ -332,13 +360,13 @@ export default function Dashboard() {
                                             </PieChart>
                                         </ResponsiveContainer>
                                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                            <span className="text-5xl font-black text-nyaya-text mb-2">{MOCK_RESULTS.analytics.winRate}%</span>
+                                            <span className="text-5xl font-black text-nyaya-text mb-2">{results.analytics.winRate}%</span>
                                             <span className="text-[12px] uppercase tracking-widest font-bold text-nyaya-muted">Allowance Rate</span>
                                         </div>
                                     </div>
 
                                     <div className="flex flex-wrap items-center justify-center gap-6 w-full pt-6 border-t border-nyaya-border/50">
-                                        {MOCK_RESULTS.analytics.outcomes.map(item => (
+                                        {results.analytics.outcomes.map(item => (
                                             <div key={item.name} className="flex items-center gap-2">
                                                 <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: item.color }}></div>
                                                 <span className="text-[14px] font-bold text-nyaya-text">{item.name}</span>
@@ -355,7 +383,7 @@ export default function Dashboard() {
                                         <div className="mb-10 p-6 bg-nyaya-bg/50 rounded-2xl border border-nyaya-border/50">
                                             <div className="flex justify-between items-end mb-4">
                                                 <span className="text-[13px] font-bold text-nyaya-muted uppercase tracking-wider">Average Resolution Time</span>
-                                                <span className="text-3xl font-black text-nyaya-text">{MOCK_RESULTS.analytics.avgDuration}</span>
+                                                <span className="text-3xl font-black text-nyaya-text">{results.analytics.avgDuration}</span>
                                             </div>
                                             <div className="w-full bg-nyaya-surface rounded-full h-4 mb-3 border border-nyaya-border overflow-hidden shadow-inner">
                                                 <div className="bg-slate-400 h-full rounded-full" style={{ width: '60%' }}></div>
@@ -397,7 +425,7 @@ export default function Dashboard() {
                             </h2>
 
                             <div className="space-y-6">
-                                {MOCK_RESULTS.cases.map(item => (
+                                {results.cases.map(item => (
                                     <div key={item.id} className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-8 shadow-sm hover:shadow-lg transition-all duration-300 relative group overflow-hidden">
 
                                         {/* Top Header */}

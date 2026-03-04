@@ -1,12 +1,30 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Security, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import os
+
+# --- MAC OS MULTIPROCESSING FIX ---
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["OMP_NUM_THREADS"] = "1"
+
 import uvicorn
 import shutil
 import numpy as np
+import time
+import uuid
+import json
+import logging
+from collections import defaultdict
+import platform
+
+# Identify if Mac ARM for hardware acceleration
+mac_device = "mps" if platform.system() == "Darwin" and platform.machine() == "arm64" else "cpu"
+
 from langchain_community.vectorstores import FAISS
+from langchain_community.docstore.in_memory import InMemoryDocstore
+import faiss
 from pymilvus import MilvusClient
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -14,21 +32,60 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.messages import HumanMessage, AIMessage
 from rank_bm25 import BM25Okapi
+from fastapi.concurrency import run_in_threadpool
 
 # Import core agent
 from core_agent import create_agent
 from outcome_predictor import OutcomePredictor
 
-app = FastAPI(title="Legal AI Research Engine API", version="2.2")
+# --- 1. GOVERNANCE & LOGGING ---
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] [LuminaAPI] %(message)s",
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger("lumina_api")
 
-# CORS
+app = FastAPI(title="Legal AI Research Engine API", version="2.3")
+
+# --- 2. SECURITY (CORS) ---
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- 3. SECURITY (API KEY AUTH) ---
+API_KEY = os.environ.get("LUMINA_API_KEY", "secret-lumina-key-2026")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    if api_key and api_key != API_KEY:
+        logger.warning("Attempted access with invalid API key.")
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+    elif not api_key:
+        logger.warning("Access without API key. Allowing for backwards compatibility in dev.")
+    return api_key or "anonymous"
+
+# --- 4. SECURITY (RATE LIMITING) ---
+class SimpleRateLimiter:
+    def __init__(self, limit=20, window=60):
+        self.requests = defaultdict(list)
+        self.limit = limit
+        self.window = window
+
+    def __call__(self, request: Request, api_key: str = Depends(verify_api_key)):
+        now = time.time()
+        client_id = api_key if api_key != "anonymous" else request.client.host
+        self.requests[client_id] = [req for req in self.requests[client_id] if now - req < self.window]
+        if len(self.requests[client_id]) >= self.limit:
+            logger.warning(f"Rate limit exceeded for client {client_id}")
+            raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again later.")
+        self.requests[client_id].append(now)
+        return client_id
 
 # Global State
 class AppState:
@@ -36,9 +93,7 @@ class AppState:
     embeddings_model = None
     bm25_index = None
     bm25_corpus = None
-    semantic_cache = {} # {query_embedding_bytes: response_object}
-    cache_keys = [] # List of embeddings (np.array)
-    cache_values = [] # List of response objects
+    semantic_cache_store = None # FAISS-backed semantic cache
 
 state = AppState()
 
@@ -147,14 +202,14 @@ async def startup_event():
             # We use langchain wrapper here for vector store compatibility
             state.embeddings_model = HuggingFaceEmbeddings(
                 model_name="law-ai/InLegalBERT", # Match the extractor
-                model_kwargs={"device": "cpu"}
+                model_kwargs={"device": mac_device}
             )
-            print("✅ Embeddings Model Loaded (InLegalBERT)")
+            print(f"✅ Embeddings Model Loaded (InLegalBERT on {mac_device})")
         except Exception:
             print("⚠️ InLegalBERT loading failed. Falling back to all-MiniLM-L6-v2.")
             state.embeddings_model = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2",
-                model_kwargs={"device": "cpu"}
+                model_kwargs={"device": mac_device}
             )
         
         # Load Vector Store
@@ -166,9 +221,9 @@ async def startup_event():
              # Use the same embedding model as ingestion
              state.embeddings_model = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/clip-ViT-B-32-multilingual-v1",
-                model_kwargs={"device": "cpu"}
+                model_kwargs={"device": mac_device}
              )
-             print("✅ Embeddings Model Loaded (CLIP Multilingual)")
+             print(f"✅ Embeddings Model Loaded (CLIP Multilingual on {mac_device})")
              
              try:
                  state.vector_store = MilvusLiteWrapper(
@@ -196,10 +251,23 @@ async def startup_event():
              update_bm25_index()
             
         else:
-            print("⚠️ Vector Store not found. Upload PDFs to initialize.")
+            logger.warning("Vector Store not found. Upload PDFs to initialize.")
+            
+        # --- SEMANTIC CACHE INIT ---
+        cache_path = "semantic_cache_index"
+        if os.path.exists(cache_path):
+            state.semantic_cache_store = FAISS.load_local(
+                cache_path, state.embeddings_model, allow_dangerous_deserialization=True
+            )
+            logger.info(f"✅ Loaded FAISS Semantic Cache from {cache_path}")
+        else:
+            # Initialize empty FAISS
+            empty_doc = Document(page_content="[cache_init]", metadata={"response": "{}"})
+            state.semantic_cache_store = FAISS.from_documents([empty_doc], state.embeddings_model)
+            logger.info("✅ Initialized new FAISS Semantic Cache")
             
     except Exception as e:
-        print(f"❌ Error loading resources: {e}")
+        logger.error(f"Error loading resources: {e}")
 
 # Endpoints
 @app.get("/health")
@@ -211,7 +279,7 @@ async def health_check():
     }
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
+async def chat_endpoint(request: ChatRequest, client_id: str = Depends(SimpleRateLimiter(limit=30, window=60))):
     try:
         # --- TRANSLATION (Source to English) ---
         if request.language and request.language != 'en':
@@ -219,37 +287,31 @@ async def chat_endpoint(request: ChatRequest):
                 from deep_translator import GoogleTranslator
                 translated = GoogleTranslator(source='auto', target='en').translate(request.message)
                 request.message = translated
-                print(f"🌐 Translated to English: {request.message}")
+                logger.info(f"Translated to English: {request.message}")
             except Exception as e:
-                print(f"⚠️ Translation to English failed: {e}")
+                logger.warning(f"Translation to English failed: {e}")
 
         # --- JURISDICTION CONTEXT ---
         if request.jurisdiction and request.jurisdiction != "All":
             request.message = f"[Jurisdiction Context: {request.jurisdiction}] {request.message}"
             
-        # --- SEMANTIC CACHE LOOKUP ---
-        query_vec = np.array(state.embeddings_model.embed_query(request.message))
-        
-        # Simple linear scan (fast for <1000 items)
-        best_sim = -1.0
-        best_idx = -1
-        
-        for i, cached_vec in enumerate(state.cache_keys):
-            # Cosine similarity (A . B) / (|A|*|B|)
-            # Assuming vectors are not normalized, but HF embeddings usually are? 
-            # Safest is manual norm.
-            norm_q = np.linalg.norm(query_vec)
-            norm_c = np.linalg.norm(cached_vec)
-            if norm_q > 0 and norm_c > 0:
-                sim = np.dot(query_vec, cached_vec) / (norm_q * norm_c)
-                if sim > best_sim:
-                    best_sim = sim
-                    best_idx = i
-        
-        if best_sim > 0.90:
-            print(f"⚡ Cache Hit (Similarity: {best_sim:.4f})")
-            return state.cache_values[best_idx]
-            
+        # --- SEMANTIC CACHE LOOKUP (FAISS) ---
+        if state.semantic_cache_store:
+            # We use a tight L2 threshold for "very similar" matches against the persistent FAISS index
+            results = state.semantic_cache_store.similarity_search_with_score(request.message, k=1)
+            if results:
+                doc, l2_distance = results[0]
+                if doc.page_content != "[cache_init]" and l2_distance < 0.25:
+                    logger.info(f"⚡ Cache Hit (L2 Distance: {l2_distance:.4f})")
+                    try:
+                        cached_data = json.loads(doc.metadata["response"])
+                        return ChatResponse(
+                            response=cached_data["response"], 
+                            sources=cached_data.get("sources", []), 
+                            cached=True
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to parse cached response: {e}")
         # --- END CACHE ---
 
         # Initialize Agent
@@ -303,22 +365,27 @@ async def chat_endpoint(request: ChatRequest):
         
         response_obj = ChatResponse(response=final_message, sources=sources, cached=False)
         
-        # --- UPDATE CACHE ---
-        # Evict if full (FIFO)
-        if len(state.cache_keys) > 100:
-            state.cache_keys.pop(0)
-            state.cache_values.pop(0)
+        # --- UPDATE CACHE (FAISS) ---
+        if state.semantic_cache_store:
+            cache_meta = {
+                "response": json.dumps({
+                    "response": final_message,
+                    "sources": sources
+                })
+            }
+            cache_doc = Document(page_content=request.message, metadata=cache_meta)
+            state.semantic_cache_store.add_documents([cache_doc])
             
-        state.cache_keys.append(query_vec)
-        # Store a copy of response with cached=True for next time
-        cached_response = ChatResponse(response=final_message, sources=sources, cached=True)
-        state.cache_values.append(cached_response)
+            try:
+                state.semantic_cache_store.save_local("semantic_cache_index")
+            except Exception as e:
+                logger.error(f"Failed to save semantic cache: {e}")
         
         return response_obj
         
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 class SimilarityRequest(BaseModel):
@@ -326,21 +393,36 @@ class SimilarityRequest(BaseModel):
     jurisdiction: Optional[str] = "All"
 
 @app.post("/similar_cases")
-async def similar_cases_endpoint(request: SimilarityRequest):
+async def similar_cases_endpoint(request: SimilarityRequest, client_id: str = Depends(SimpleRateLimiter(limit=30, window=60))):
     try:
         if not state.vector_store:
             raise HTTPException(status_code=500, detail="Vector store not initialized. Upload documents first.")
             
-        # 1. Retrieve top 5 most similar cases
-        filter_expr = f"jurisdiction == '{request.jurisdiction}'" if request.jurisdiction and request.jurisdiction != "All" else None
+        # We need raw similarity search to get the Document objects.
+        # Handle the syntactic difference between Langchain Milvus (expr="string") and FAISS (filter={"dict"})
+        is_faiss = hasattr(state.vector_store, 'index') or state.vector_store.__class__.__name__ == 'FAISS'
         
-        # We need raw similarity search to get the Document objects
-        similar_docs = state.vector_store.similarity_search(request.description, k=5, filter=filter_expr)
+        if request.jurisdiction and request.jurisdiction != "All":
+            if is_faiss:
+                similar_docs = state.vector_store.similarity_search(request.description, k=5, filter={"jurisdiction": request.jurisdiction})
+            else:
+                similar_docs = state.vector_store.similarity_search(request.description, k=5, expr=f"jurisdiction == '{request.jurisdiction}'")
+        else:
+            similar_docs = state.vector_store.similarity_search(request.description, k=5)
         
         if not similar_docs:
             return {
-                "distribution": "No sufficiently similar cases found in the database.",
-                "precedents": []
+                "analytics": {
+                    "winRate": 0,
+                    "avgDuration": "N/A",
+                    "judgeTendency": "Unknown",
+                    "outcomes": [
+                        {"name": "Allowance", "value": 0, "color": "#4F46E5"},
+                        {"name": "Dismissal", "value": 0, "color": "#E11D48"},
+                        {"name": "Settlement", "value": 0, "color": "#94A3B8"}
+                    ]
+                },
+                "cases": []
             }
             
         # 2. Extract snippets and metadata for the frontend
@@ -360,82 +442,159 @@ async def similar_cases_endpoint(request: SimilarityRequest):
             
             context_blocks.append(f"CASE {i+1} [{source}]:\n{snippet}\n")
             
-        # 3. Use LLM to analyze the outcomes of these specific cases
-        from langchain_ollama import ChatOllama
-        from langchain_core.messages import SystemMessage, HumanMessage
+        # 3. Use ChatGroq to analyze the outcomes of these specific cases and generate structured UI data
+        # 3. Use ChatGroq to analyze the outcomes of these specific cases and generate structured UI data
+        from langchain_groq import ChatGroq
+        from langchain_core.prompts import ChatPromptTemplate
+        from langchain_core.output_parsers import JsonOutputParser
+        from pydantic import BaseModel, Field
+        from typing import List
+        import os
         
-        llm = ChatOllama(model="llama3", temperature=0.1)
+        class PrecedentCase(BaseModel):
+            id: int
+            name: str
+            year: int
+            court: str
+            match: int
+            outcome: str
+            duration_months: int
+            factSimilarity: str
+            legalSimilarity: str
+            tags: List[str]
+            reason: str
+            
+        class CasesList(BaseModel):
+            cases: List[PrecedentCase]
+
+        parser = JsonOutputParser(pydantic_object=CasesList)
+
+        llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0.1)
         
-        analysis_prompt = f"""You are a legal expert analyzing historical precedents. 
-Given the user's case description and {len(similar_docs)} similar historical cases retrieved from the database, provide two things:
+        analysis_prompt = """You are a legal expert analyzing historical precedents for a Prediction Dashboard.
+Given the user's case description and {num_cases} similar historical cases retrieved from our database, generate a structured JSON object containing a list of 'cases'.
 
-1. OVERALL DISTRIBUTION: A 2-sentence summary of how these types of cases generally conclude based ONLY on the provided precedents (e.g. "Most similar cases resulted in dismissal due to lack of evidence. However, one case awarded damages.").
-2. PRECEDENT OUTCOMES: For each of the {len(similar_docs)} cases, write exactly ONE sentence explaining what happened in that specific case.
+Extract and synthesize ONLY the 'cases' array for the specific {num_cases} precedents provided below.
+- id: integer starting from 1
+- name: deduce a case name from the snippet (e.g. "State v. Sharma")
+- year: integer (guess based on context or use recent year)
+- court: court name
+- match: semantic match percentage (0-100)
+- outcome: EXACTLY ONE OF "Allowance", "Dismissal", or "Settlement"
+- duration_months: integer, estimate resolution time in months based on dates in context, or 0 if unknown
+- factSimilarity: "High", "Medium", or "Low"
+- legalSimilarity: "High", "Medium", or "Low"
+- tags: Array of 2-3 legal tags (e.g. ["Bail", "PMLA"])
+- reason: 1-2 sentences explaining the court's reasoning and ratio decidendi based on the snippet.
 
-User's Case: {request.description}
+User's Case: {user_desc}
 
 --- RETRIEVED PRECEDENTS ---
-{"".join(context_blocks)}
+{context}
 
-FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
-OVERALL DISTRIBUTION: [Your 2 sentence summary]
-CASE 1 OUTCOME: [1 sentence]
-CASE 2 OUTCOME: [1 sentence]
-...etc
+CRITICAL: Return ONLY valid JSON format matching the schema rules.
+{format_instructions}
 """
-        messages = [HumanMessage(content=analysis_prompt)]
-        response = llm.invoke(messages)
+        prompt = ChatPromptTemplate.from_template(analysis_prompt)
+        chain = prompt | llm | parser
         
-        # Parse the LLM response to send cleanly to frontend
-        response_text = response.content
-        
-        distribution = "Analysis unavailable."
-        
-        if "OVERALL DISTRIBUTION:" in response_text:
-            parts = response_text.split("CASE 1 OUTCOME:")
-            distribution = parts[0].replace("OVERALL DISTRIBUTION:", "").strip()
+        try:
+            output_json = chain.invoke({
+                "num_cases": len(similar_docs),
+                "user_desc": request.description,
+                "context": "".join(context_blocks),
+                "format_instructions": parser.get_format_instructions()
+            })
             
-            # Try to attach the 1-sentence outcomes to the precedent objects
-            if len(parts) > 1:
-                outcomes_text = "CASE 1 OUTCOME:" + parts[1]
-                for i in range(len(precedents)):
-                    outcome_marker = f"CASE {i+1} OUTCOME:"
-                    next_marker = f"CASE {i+2} OUTCOME:"
-                    
-                    if outcome_marker in outcomes_text:
-                        start_idx = outcomes_text.find(outcome_marker) + len(outcome_marker)
-                        end_idx = outcomes_text.find(next_marker) if next_marker in outcomes_text else len(outcomes_text)
-                        
-                        precedents[i]["outcome_summary"] = outcomes_text[start_idx:end_idx].strip()
-                    else:
-                        precedents[i]["outcome_summary"] = "Outcome unclear from text."
-        else:
-             distribution = response_text # Fallback
-             for p in precedents:
-                 p["outcome_summary"] = "See detailed snippet."
-        
-        return {
-            "distribution": distribution,
-            "precedents": precedents
-        }
-        
+            if isinstance(output_json, dict):
+                cases_list = output_json.get("cases", [])
+            elif isinstance(output_json, list):
+                cases_list = output_json
+            else:
+                cases_list = []
+                
+            total_cases = len(cases_list)
+            
+            allowance_count = 0
+            dismissal_count = 0
+            settlement_count = 0
+            total_duration = 0
+            cases_with_duration = 0
+            
+            for c in cases_list:
+                outcome = c.get("outcome", "Dismissal")
+                if "allowance" in outcome.lower(): 
+                    allowance_count += 1
+                    c["outcome"] = "Allowance"
+                elif "dismissal" in outcome.lower(): 
+                    dismissal_count += 1
+                    c["outcome"] = "Dismissal"
+                else: 
+                    settlement_count += 1
+                    c["outcome"] = "Settlement"
+                
+                duration = c.get("duration_months", 0)
+                if isinstance(duration, int) and duration > 0:
+                    total_duration += duration
+                    cases_with_duration += 1
+            
+            if total_cases > 0:
+                win_rate = round((allowance_count / total_cases) * 100)
+                dismissal_pct = round((dismissal_count / total_cases) * 100)
+                settlement_pct = 100 - win_rate - dismissal_pct
+            else:
+                win_rate = 0
+                dismissal_pct = 0
+                settlement_pct = 0
+            
+            avg_duration_str = f"{int(total_duration / cases_with_duration)} months" if cases_with_duration > 0 else "14 months"
+            judge_tendency = "Pro-Allowance" if allowance_count >= dismissal_count else "Strict"
+            
+            result_json = {
+                "analytics": {
+                    "winRate": win_rate,
+                    "avgDuration": avg_duration_str,
+                    "judgeTendency": judge_tendency,
+                    "outcomes": [
+                        {"name": "Allowance", "value": win_rate, "color": "#4F46E5"},
+                        {"name": "Dismissal", "value": dismissal_pct, "color": "#E11D48"},
+                        {"name": "Settlement", "value": settlement_pct, "color": "#94A3B8"}
+                    ]
+                },
+                "cases": cases_list
+            }
+            return result_json
+        except Exception as e:
+            logger.error(f"Failed to parse Groq response: {e}")
+            raise HTTPException(status_code=500, detail="Failed to synthesize precedent analytics.")
+            
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload")
-async def upload_document(files: List[UploadFile] = File(...)):
+async def upload_document(files: List[UploadFile] = File(...), client_id: str = Depends(SimpleRateLimiter(limit=30, window=60))):
     try:
         temp_dir = "temp_uploads"
         os.makedirs(temp_dir, exist_ok=True)
         
         documents = []
+        MAX_FILE_SIZE = 20 * 1024 * 1024 # 20 MB
         
         for file in files:
+            if file.content_type != "application/pdf":
+                raise HTTPException(status_code=400, detail=f"File {file.filename} is not a valid PDF. Only application/pdf files are permitted.")
+                
+            content = await file.read()
+            if len(content) > MAX_FILE_SIZE:
+                raise HTTPException(status_code=413, detail=f"File size exceeds 20MB limit.")
+                
             file_path = os.path.join(temp_dir, file.filename)
             with open(file_path, "wb") as f:
-                shutil.copyfileobj(file.file, f)
+                f.write(content)
             
             loader = PyPDFLoader(file_path)
             docs = loader.load()
@@ -478,7 +637,8 @@ async def visualize_timeline(request: dict):
         from timeline_extractor import TimelineExtractor
         
         extractor = TimelineExtractor()
-        timeline_events = extractor.extract_chronology(case_text)
+        # Use run_in_threadpool to prevent the synchronous LangChain/Ollama call from blocking the FastAPI event loop
+        timeline_events = await run_in_threadpool(extractor.extract_chronology, case_text)
         
         if not timeline_events:
             return {

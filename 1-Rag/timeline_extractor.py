@@ -6,12 +6,12 @@ Uses LLM (Groq) to extract events and dates from legal text and create a timelin
 import os
 import re
 from typing import List, Dict, Optional
-from dotenv import load_dotenv
-from langchain_ollama import ChatOllama
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import JsonOutputParser
 import logging
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -30,9 +30,9 @@ class TimelineExtractor:
     
     def __init__(self):
         """Initialize the Timeline Extractor with Groq LLM"""
-        # Initialize Ollama LLM
-        self.llm = ChatOllama(
-            model="llama3",
+        # Initialize fast Groq LLM to prevent local hardware timeouts
+        self.llm = ChatGroq(
+            model="llama-3.1-8b-instant",
             temperature=0.0
         )
         
@@ -84,15 +84,13 @@ class TimelineExtractor:
             List of timeline events sorted by date
         """
         try:
-            # Step 1: Pre-filter to reduce token count
-            relevant_paragraphs = self.extract_date_paragraphs(text)
+            # Re-enable passing the exact text to Groq instead of aggressive regex filtering.
+            # Local Llama needed the regex to survive, but Groq handles full context perfectly!
+            filtered_text = text[:15000] # Safe 15k char chunk limit (~4k tokens)
             
-            if not relevant_paragraphs:
-                logger.warning("No date-containing paragraphs found in text")
+            if not filtered_text.strip():
+                logger.warning("Empty case text provided")
                 return []
-            
-            # Join relevant paragraphs (limit to first 15 to avoid token overflow)
-            filtered_text = "\n\n".join(relevant_paragraphs[:15])
             
             # Step 2: Use LLM to extract structured events
             system_prompt = """You are a precise legal document analyzer. Your task is to extract chronological events from legal case text.
@@ -113,13 +111,16 @@ Extract events from the following legal text:"""
             
             prompt = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
-                ("human", user_prompt)
+                ("human", "{user_text}")
             ])
             
             chain = prompt | self.llm | self.parser
             
             # Invoke the chain
-            result = chain.invoke({"format_instructions": self.parser.get_format_instructions()})
+            result = chain.invoke({
+                "format_instructions": self.parser.get_format_instructions(),
+                "user_text": user_prompt
+            })
             
             # Handle both list and single object responses
             if isinstance(result, list):

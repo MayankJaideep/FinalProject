@@ -5,10 +5,14 @@ Uses 'law-ai/InLegalBERT' (768d) to generate dense vector embeddings that captur
 
 import numpy as np
 import logging
+import platform
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Identify if Mac ARM for hardware acceleration
+mac_device = "mps" if platform.system() == "Darwin" and platform.machine() == "arm64" else "cpu"
 
 try:
     from sentence_transformers import SentenceTransformer
@@ -30,8 +34,8 @@ class BERTFeatureExtractor:
         
         if SENTENCE_TRANSFORMERS_AVAILABLE:
             try:
-                logger.info(f"🔄 Loading SentenceTransformer model: {model_name}...")
-                self.model = SentenceTransformer(model_name)
+                logger.info(f"🔄 Loading SentenceTransformer model: {model_name} on {mac_device}...")
+                self.model = SentenceTransformer(model_name, device=mac_device)
                 logger.info("✅ Model loaded successfully.")
                 
                 # Verify dimension
