@@ -1,7 +1,9 @@
 """
-Feature extraction module for legal cases.
-Extracts structured features from case text using NLP and pattern matching.
+Fallback feature extractor (6 features). Used only if EnhancedFeatureExtractor fails to import. 
+For production, ensure enhanced_feature_extractor.py is functional.
 """
+
+__version__ = "legacy"
 
 import re
 import os

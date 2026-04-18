@@ -1,9 +1,13 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Security, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security.api_key import APIKeyHeader
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+import asyncio
 from typing import List, Optional, Dict, Any
 import os
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 # --- MAC OS MULTIPROCESSING FIX ---
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -18,6 +22,9 @@ import json
 import logging
 from collections import defaultdict
 import platform
+import datetime
+
+start_time = time.time()
 
 # Identify if Mac ARM for hardware acceleration
 mac_device = "mps" if platform.system() == "Darwin" and platform.machine() == "arm64" else "cpu"
@@ -37,6 +44,22 @@ from fastapi.concurrency import run_in_threadpool
 # Import core agent
 from core_agent import create_agent
 from outcome_predictor import OutcomePredictor
+from performance_optimizer import perf_monitor
+import functools
+
+def timing_decorator(func):
+    """Decorator that records endpoint call timing using perf_monitor."""
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        perf_monitor.start_timer()
+        try:
+            result = await func(*args, **kwargs)
+            perf_monitor.end_timer("api_calls")
+            return result
+        except Exception:
+            perf_monitor.end_timer("api_calls")
+            raise
+    return wrapper
 
 # --- 1. GOVERNANCE & LOGGING ---
 logging.basicConfig(
@@ -99,7 +122,7 @@ state = AppState()
 
 # Models
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=4000)
     history: List[Dict[str, str]] = []
     language: str = "en"
     jurisdiction: str = "All"
@@ -195,6 +218,11 @@ def update_bm25_index():
 @app.on_event("startup")
 async def startup_event():
     print("🚀 Starting Legal AI Engine...")
+    
+    # Startup Checks
+    if not os.environ.get("INDIAN_KANOON_API_TOKEN"):
+        logger.warning("INDIAN_KANOON_API_TOKEN is missing. Indian Kanoon search will be disabled. (Optional)")
+        
     try:
         # Load Embeddings
         try:
@@ -213,7 +241,6 @@ async def startup_event():
             )
         
         # Load Vector Store
-        # Since running from 1-Rag/, we need to go up one level
         milvus_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "services", "ingestion", "milvus_demo.db"))
         print(f"DEBUG: Checking for Milvus DB at {milvus_db_path}")
         if os.path.exists(milvus_db_path):
@@ -234,12 +261,12 @@ async def startup_event():
                  print("✅ Milvus Vector Store Loaded (Custom Wrapper)")
              except Exception as e:
                  print(f"❌ Failed to load Milvus Wrapper: {e}")
-             
-        elif os.path.exists("faiss_store"):
+                 
+        if state.vector_store is None and os.path.exists("faiss_store"):
             # Fallback to legacy FAISS
             # Load default embeddings for FAISS if not CLIP
              state.embeddings_model = HuggingFaceEmbeddings(
-                model_name="law-ai/InLegalBERT", 
+                model_name="sentence-transformers/clip-ViT-B-32-multilingual-v1", 
                 model_kwargs={"device": "cpu"}
             )
              state.vector_store = FAISS.load_local(
@@ -250,7 +277,7 @@ async def startup_event():
             # Build BM25
              update_bm25_index()
             
-        else:
+        if not state.vector_store:
             logger.warning("Vector Store not found. Upload PDFs to initialize.")
             
         # --- SEMANTIC CACHE INIT ---
@@ -271,14 +298,28 @@ async def startup_event():
 
 # Endpoints
 @app.get("/health")
-async def health_check():
-    return {
-        "status": "active", 
-        "vector_store": state.vector_store is not None,
-        "bm25_index": state.bm25_index is not None
-    }
+async def health():
+    try:
+        from core_agent import ACTIVE_LLM_PROVIDER, ACTIVE_LLM_MODEL, GLOBAL_MODELS
+        llm_string = f"{ACTIVE_LLM_PROVIDER}/{ACTIVE_LLM_MODEL}" if ACTIVE_LLM_PROVIDER != "unknown" else "ollama/llama3.2"
+        return {
+            "status": "ok",
+            "vector_db": "milvus_lite" if state.vector_store is not None else "unavailable",
+            "bm25_loaded": state.bm25_index is not None,
+            "ml_model_loaded": GLOBAL_MODELS.predictor is not None,
+            "docs_indexed": len(state.bm25_corpus) if state.bm25_corpus else 0,
+            "llm": llm_string
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/llm-status")
+async def llm_status():
+    from core_agent import ACTIVE_LLM_PROVIDER, ACTIVE_LLM_MODEL
+    return {"provider": ACTIVE_LLM_PROVIDER, "model": ACTIVE_LLM_MODEL}
 
 @app.post("/chat", response_model=ChatResponse)
+@timing_decorator
 async def chat_endpoint(request: ChatRequest, client_id: str = Depends(SimpleRateLimiter(limit=30, window=60))):
     try:
         # --- TRANSLATION (Source to English) ---
@@ -339,8 +380,15 @@ async def chat_endpoint(request: ChatRequest, client_id: str = Depends(SimpleRat
         
         langchain_history.append(HumanMessage(content=request.message))
         
-        initial_state = {"messages": langchain_history}
-        final_state = agent_executor.invoke(initial_state)
+        initial_state = {"messages": langchain_history, "step_count": 0}
+        
+        try:
+            final_state = await asyncio.wait_for(
+                run_in_threadpool(agent_executor.invoke, initial_state), 
+                timeout=60.0
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=504, detail="The legal AI agent took too long to respond. The request has timed out.")
         
         final_message = final_state["messages"][-1].content
         
@@ -393,6 +441,7 @@ class SimilarityRequest(BaseModel):
     jurisdiction: Optional[str] = "All"
 
 @app.post("/similar_cases")
+@timing_decorator
 async def similar_cases_endpoint(request: SimilarityRequest, client_id: str = Depends(SimpleRateLimiter(limit=30, window=60))):
     try:
         if not state.vector_store:
@@ -406,7 +455,7 @@ async def similar_cases_endpoint(request: SimilarityRequest, client_id: str = De
             if is_faiss:
                 similar_docs = state.vector_store.similarity_search(request.description, k=5, filter={"jurisdiction": request.jurisdiction})
             else:
-                similar_docs = state.vector_store.similarity_search(request.description, k=5, expr=f"jurisdiction == '{request.jurisdiction}'")
+                similar_docs = state.vector_store.similarity_search(request.description, k=5, filter=f"jurisdiction == '{request.jurisdiction}'")
         else:
             similar_docs = state.vector_store.similarity_search(request.description, k=5)
         
@@ -550,6 +599,31 @@ CRITICAL: Return ONLY valid JSON format matching the schema rules.
             avg_duration_str = f"{int(total_duration / cases_with_duration)} months" if cases_with_duration > 0 else "14 months"
             judge_tendency = "Pro-Allowance" if allowance_count >= dismissal_count else "Strict"
             
+            # Use Outcome Predictor to get SHAP and confidence
+            explanation = {}
+            try:
+                from outcome_predictor import OutcomePredictor
+                from feature_extractor import FeatureExtractor
+                
+                # Assume feature extraction works locally for this snippet
+                feat_ex = FeatureExtractor()
+                features = feat_ex.extract_all_features(request.description)
+                features['court'] = request.jurisdiction
+                
+                # Get predictor from core_agent
+                import core_agent
+                predictor = core_agent.get_predictor()
+                if predictor:
+                    pred_res = predictor.predict(features)
+                    if "explanation" in pred_res:
+                        explanation = pred_res["explanation"]
+            except Exception as ml_e:
+                logger.warning(f"Failed to generate prediction explanation: {ml_e}")
+
+            # Embed real similar precedent IDs
+            if explanation:
+                explanation["similar_precedents"] = [c.id for c in cases_list[:3]]
+            
             result_json = {
                 "analytics": {
                     "winRate": win_rate,
@@ -561,6 +635,7 @@ CRITICAL: Return ONLY valid JSON format matching the schema rules.
                         {"name": "Settlement", "value": settlement_pct, "color": "#94A3B8"}
                     ]
                 },
+                "explanation": explanation,
                 "cases": cases_list
             }
             return result_json
@@ -576,6 +651,7 @@ CRITICAL: Return ONLY valid JSON format matching the schema rules.
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload")
+@timing_decorator
 async def upload_document(files: List[UploadFile] = File(...), client_id: str = Depends(SimpleRateLimiter(limit=30, window=60))):
     try:
         temp_dir = "temp_uploads"
@@ -585,12 +661,16 @@ async def upload_document(files: List[UploadFile] = File(...), client_id: str = 
         MAX_FILE_SIZE = 20 * 1024 * 1024 # 20 MB
         
         for file in files:
-            if file.content_type != "application/pdf":
-                raise HTTPException(status_code=400, detail=f"File {file.filename} is not a valid PDF. Only application/pdf files are permitted.")
+            if not file.filename.lower().endswith('.pdf') or file.content_type != "application/pdf":
+                raise HTTPException(status_code=400, detail=f"File {file.filename} fails validation. Only PDF files are permitted.")
                 
             content = await file.read()
             if len(content) > MAX_FILE_SIZE:
                 raise HTTPException(status_code=413, detail=f"File size exceeds 20MB limit.")
+            
+            # Check magic bytes for PDF (%PDF)
+            if not content.startswith(b'%PDF'):
+                raise HTTPException(status_code=400, detail=f"File {file.filename} is corrupted or not a valid PDF document.")
                 
             file_path = os.path.join(temp_dir, file.filename)
             with open(file_path, "wb") as f:
@@ -603,24 +683,69 @@ async def upload_document(files: List[UploadFile] = File(...), client_id: str = 
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         final_documents = text_splitter.split_documents(documents)
         
-        if state.vector_store:
+        is_faiss = hasattr(state.vector_store, 'index') or state.vector_store.__class__.__name__ == 'FAISS'
+        if state.vector_store and is_faiss:
             state.vector_store.add_documents(final_documents)
+            state.vector_store.save_local("faiss_store")
         else:
-            state.vector_store = FAISS.from_documents(final_documents, state.embeddings_model)
-            
-        state.vector_store.save_local("faiss_store")
+            # Fallback to FAISS specifically for uploads if Milvus is default
+            emb_model = HuggingFaceEmbeddings(model_name="sentence-transformers/clip-ViT-B-32-multilingual-v1", model_kwargs={"device": "cpu"})
+            if os.path.exists("faiss_store"):
+                faiss_store = FAISS.load_local("faiss_store", emb_model, allow_dangerous_deserialization=True)
+                faiss_store.add_documents(final_documents)
+                faiss_store.save_local("faiss_store")
+            else:
+                faiss_store = FAISS.from_documents(final_documents, emb_model)
+                faiss_store.save_local("faiss_store")
         
         # Rebuild BM25 after upload
         update_bm25_index()
         
+        # Run LegalNER for auto-tagging on the chunks
+        tags = {"acts": set(), "sections": set(), "court": None, "type": "Commercial"}
+        try:
+            from core_agent import get_ner
+            ner = get_ner()
+            sample_text = " ".join([d.page_content for d in final_documents[:5]])
+            entities = ner.extract_entities(sample_text)
+            for e in entities:
+                if e['label'] == 'STATUTE':
+                    tags['acts'].add(e['text'])
+                elif e['label'] == 'PROVISION':
+                    tags['sections'].add(e['text'])
+                elif e['label'] == 'COURT':
+                    tags['court'] = e['text']
+            
+            # Simple heuristic for case type
+            if "arbitration" in sample_text.lower():
+                tags['type'] = "Arbitration"
+            elif "patent" in sample_text.lower() or "trademark" in sample_text.lower():
+                tags['type'] = "Intellectual Property"
+            
+            tags['acts'] = list(tags['acts'])
+            tags['sections'] = list(tags['sections'])
+        except Exception as e:
+            logger.warning(f"NER failed during upload: {e}")
+        
         shutil.rmtree(temp_dir)
         
-        return {"message": f"Processed {len(files)} files successfully.", "chunks": len(final_documents)}
+        return {
+            "message": f"Processed {len(files)} files successfully.", 
+            "chunks": len(final_documents),
+            "tags": {
+                "acts": tags['acts'],
+                "sections": tags['sections'],
+                "court": tags['court'] or "Unknown Court",
+                "type": tags['type'],
+                "doc_id": str(uuid.uuid4())
+            }
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/visualize/timeline")
+@timing_decorator
 async def visualize_timeline(request: dict):
     """
     Extract chronological timeline from legal case text.
@@ -657,6 +782,184 @@ async def visualize_timeline(request: dict):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Timeline extraction failed: {str(e)}")
+
+class CitationRequest(BaseModel):
+    chunk_ids: List[str]
+
+@app.post("/resolve-citations")
+async def resolve_citations(request: CitationRequest):
+    from core_agent import CITATION_STORE
+    results = []
+    for cid in request.chunk_ids:
+        if cid in CITATION_STORE:
+            results.append(CITATION_STORE[cid])
+    return {"citations": results}
+
+class ExportRequest(BaseModel):
+    messages: List[Dict[str, Any]]
+    format: str = "pdf"
+    title: str = "Legal Research Session"
+
+@app.post("/export/session")
+async def export_session(request: ExportRequest):
+    from fastapi.responses import FileResponse
+    import os
+    import datetime
+    
+    os.makedirs("temp_uploads", exist_ok=True)
+    stamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    
+    if request.format == "pdf":
+        from reportlab.lib.pagesizes import letter
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        
+        filepath = f"temp_uploads/session_export_{stamp}.pdf"
+        doc = SimpleDocTemplate(filepath, pagesize=letter)
+        styles = getSampleStyleSheet()
+        
+        # Add basic custom style
+        speaker_style = ParagraphStyle(
+            'Speaker',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            spaceAfter=6,
+            textColor='blue'
+        )
+        
+        Story = []
+        Story.append(Paragraph(f"Lumina Copilot - {request.title}", styles['Title']))
+        Story.append(Spacer(1, 12))
+        
+        for msg in request.messages:
+            role = "User" if msg['role'] == 'user' else "Research Assistant"
+            Story.append(Paragraph(role, speaker_style))
+            # simple text processing
+            content = str(msg['content']).replace('\n', '<br/>')
+            Story.append(Paragraph(content, styles['Normal']))
+            Story.append(Spacer(1, 12))
+            
+        doc.build(Story)
+        return FileResponse(filepath, filename=f"{request.title}.pdf", media_type="application/pdf")
+        
+    elif request.format == "docx":
+        from docx import Document
+        filepath = f"temp_uploads/session_export_{stamp}.docx"
+        doc = Document()
+        doc.add_heading(f"Lumina Copilot - {request.title}", 0)
+        
+        for msg in request.messages:
+            role = "User" if msg['role'] == 'user' else "Research Assistant"
+            doc.add_heading(role, level=2)
+            doc.add_paragraph(str(msg['content']))
+            
+        doc.save(filepath)
+        return FileResponse(filepath, filename=f"{request.title}.docx", media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        
+    else:
+        raise HTTPException(status_code=400, detail="Invalid format. Use 'pdf' or 'docx'.")
+
+class ArgumentBuilderRequest(BaseModel):
+    issue: str
+    side: str = "petitioner"
+    relevant_case_ids: Optional[List[str]] = []
+
+@app.post("/argument-builder")
+async def argument_builder(request: ArgumentBuilderRequest):
+    try:
+        from langchain_groq import ChatGroq
+        from langchain_core.prompts import ChatPromptTemplate
+        from langchain_core.output_parsers import JsonOutputParser
+        from pydantic import BaseModel
+        
+        class ArgumentOutput(BaseModel):
+            facts: str
+            issues: str
+            arguments: str
+            prayer: str
+            
+        parser = JsonOutputParser(pydantic_object=ArgumentOutput)
+        llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0.2)
+        
+        prompt = ChatPromptTemplate.from_template(
+            "You are an expert Indian Commercial Court lawyer representing the {side}.\n"
+            "Given the legal issue below, build a structured modular argument.\n"
+            "Issue: {issue}\n\n{format_instructions}"
+        )
+        
+        chain = prompt | llm | parser
+        res = chain.invoke({
+            "side": request.side,
+            "issue": request.issue,
+            "format_instructions": parser.get_format_instructions()
+        })
+        
+        return res
+    except Exception as e:
+        logger.error(f"Argument Builder failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to build argument")
+
+class DeadlineTrackerRequest(BaseModel):
+    filing_date: str
+    case_type: str
+
+@app.post("/deadline-tracker")
+async def deadline_tracker(request: DeadlineTrackerRequest):
+    from datetime import datetime, timedelta
+    
+    try:
+        base_date = datetime.strptime(request.filing_date, "%Y-%m-%d")
+        
+        # Hardcoded Commercial Courts Act Deadlines
+        deadlines = [
+            {
+                "name": "Written Statement",
+                "days_offset": 30,
+                "max_offset": 120,
+                "source": "Order VIII Rule 1 CPC (Commercial)",
+                "critical": True
+            },
+            {
+                "name": "Filing of Documents",
+                "days_offset": 30,
+                "max_offset": 30,
+                "source": "Order XI Rule 1",
+                "critical": False
+            },
+            {
+                "name": "Case Management Hearing",
+                "days_offset": 30 + 28,  # approx 4 weeks after pleadings
+                "max_offset": 30 + 28,
+                "source": "Order XV-A",
+                "critical": True
+            },
+            {
+                "name": "Conclusion of Trial",
+                "days_offset": 30 + 28 + 180,  # 6 months after issues
+                "max_offset": 30 + 28 + 180,
+                "source": "Comm Courts Act Sec 16",
+                "critical": False
+            }
+        ]
+        
+        computed = []
+        now = datetime.now()
+        for d in deadlines:
+            due_date = base_date + timedelta(days=d["days_offset"])
+            days_remaining = (due_date - now).days
+            
+            computed.append({
+                "name": d["name"],
+                "due_date": due_date.strftime("%Y-%m-%d"),
+                "days_remaining": days_remaining,
+                "urgency": "red" if days_remaining < 7 else ("amber" if days_remaining < 21 else "green"),
+                "source": d["source"]
+            })
+            
+        return {"deadlines": computed}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

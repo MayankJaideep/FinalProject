@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
-import streamlit as st
 import time
 import os
 from typing import Dict, Any
+
+try:
+    import streamlit as st
+    _HAS_STREAMLIT = True
+except ImportError:
+    _HAS_STREAMLIT = False
 
 class PerformanceMonitor:
     """Monitor and optimize app performance"""
@@ -47,6 +52,8 @@ perf_monitor = PerformanceMonitor()
 
 def display_performance_stats():
     """Display performance metrics in the app"""
+    if not _HAS_STREAMLIT:
+        return
     stats = perf_monitor.get_stats()
     
     with st.expander("📊 Performance Stats", expanded=False):
@@ -63,6 +70,8 @@ def display_performance_stats():
 
 def optimize_api_calls():
     """Optimize API call patterns"""
+    if not _HAS_STREAMLIT:
+        return {}
     # Cache API responses
     if "api_cache" not in st.session_state:
         st.session_state.api_cache = {}

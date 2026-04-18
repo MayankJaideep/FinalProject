@@ -9,11 +9,14 @@ import logging
 from langchain_core.tools import tool
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, AIMessage
 from langchain_ollama import ChatOllama
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode
 from langchain_core.runnables import RunnableConfig
+import uuid
 
 # Import performance monitor
 from performance_optimizer import perf_monitor, cached_api_call
@@ -32,7 +35,7 @@ from langgraph.graph.message import add_messages
 from outcome_predictor import OutcomePredictor
 from legal_summarizer import LegalSummarizer
 from legal_ner import LegalNER
-from historical_analyzer import HistoricalAnalyzer
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +43,13 @@ logger = logging.getLogger(__name__)
 
 # Global cache for features to replace session_state
 FEATURE_CACHE = {}
+
+# Store for resolved citations
+CITATION_STORE = {}
+
+# Active LLM status tracking
+ACTIVE_LLM_PROVIDER = "unknown"
+ACTIVE_LLM_MODEL = "unknown"
 
 # Global singletons for heavy models to avoid reloading on every tool call
 class ModelCache:
@@ -81,6 +91,7 @@ def get_ner():
 # Define the state
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
+    step_count: int
 
 def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
     """
@@ -173,8 +184,18 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
             for doc in final_docs:
                 source = doc.metadata.get('source', 'Unknown')
                 page = doc.metadata.get('page', '?')
+                chunk_id = str(uuid.uuid4())
+                
+                # Store snippet for citation resolution
+                CITATION_STORE[chunk_id] = {
+                    "source": source,
+                    "page": page,
+                    "chunk_id": chunk_id,
+                    "excerpt": doc.page_content[:120]
+                }
+                
                 content = doc.page_content[:1500] 
-                results.append(f"[REF: {source}-{page}]\nContent: {content}...\n")
+                results.append(f"[SOURCE:{chunk_id}]\nContent: {content}...\n")
             
             content = "\n\n".join(results)
             perf_monitor.end_timer("vector_searches")
@@ -259,14 +280,14 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
             return f"Error predicting outcome: {str(e)}"
 
     @tool
-    def summarize_document(text: str):
+    def summarize_legal_document(text: str, max_length: int = 200):
         """
-        Summarizes legal documents.
+        Summarizes legal documents. Use this when the user asks you to summarize an uploaded document or case text.
         """
         perf_monitor.start_timer()
         try:
             summarizer = get_summarizer()
-            result = summarizer.summarize(text)
+            result = summarizer.summarize(text, max_length=max_length)
             perf_monitor.end_timer("ml_predictions")
             perf_monitor.metrics["ml_predictions"] += 1
             return result
@@ -295,15 +316,39 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
             return f"Error extracting entities: {str(e)}"
 
     # 2. Create tool list
-    tools = [search_legal_docs, search_indian_kanoon, predict_case_outcome, summarize_document, extract_entities]
+    tools = [search_legal_docs, search_indian_kanoon, predict_case_outcome, summarize_legal_document, extract_entities]
     
-    # 3. Create optimized LLM (Ollama)
-    llm = ChatOllama(
-        model="llama3.2",
-        temperature=0.1,
-        # max_tokens not always supported by Ollama client in same way, but keep for compat if needed
-        # base_url="http://localhost:11434" # Default
-    )
+    # 3. Create optimized LLM (Gemini -> OpenAI -> Ollama)
+    llm = None
+    global ACTIVE_LLM_PROVIDER, ACTIVE_LLM_MODEL
+    
+    if os.getenv("GEMINI_API_KEY"):
+        try:
+            llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1, google_api_key=os.getenv("GEMINI_API_KEY"))
+            ACTIVE_LLM_PROVIDER = "gemini"
+            ACTIVE_LLM_MODEL = "gemini-1.5-flash"
+            print("✅ LLM initialized: Gemini 1.5 Flash")
+        except Exception as e:
+            print(f"⚠️ Failed to initialize Gemini: {e}")
+            
+    if llm is None and os.getenv("OPENAI_API_KEY"):
+        try:
+            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=os.getenv("OPENAI_API_KEY"))
+            ACTIVE_LLM_PROVIDER = "openai"
+            ACTIVE_LLM_MODEL = "gpt-4o-mini"
+            print("✅ LLM initialized: GPT-4o-mini")
+        except Exception as e:
+            print(f"⚠️ Failed to initialize OpenAI: {e}")
+            
+    if llm is None:
+        try:
+            llm = ChatOllama(model="llama3.2", temperature=0.1)
+            ACTIVE_LLM_PROVIDER = "ollama"
+            ACTIVE_LLM_MODEL = "llama3.2"
+            print("✅ LLM initialized: Ollama Llama 3.2")
+        except Exception as e:
+            print(f"⚠️ Failed to initialize Ollama: {e}")
+
     
     # 4. Create tool node
     tool_node = ToolNode(tools)
@@ -312,6 +357,10 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
     def should_continue(state: AgentState) -> Literal["tools", END]:
         messages = state["messages"]
         last_message = messages[-1]
+        
+        step_count = state.get("step_count", 0)
+        if step_count >= 10:
+            return END
         
         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
             return "tools"
@@ -340,7 +389,7 @@ RESPONSE GUIDELINES:
 GROUNDING INSTRUCTIONS (CRITICAL):
 1. You strictly answer based on the retrieved context.
 2. If the context does not contain the answer, say "I don't know based on the available documents."
-3. For every factual claim, you MUST append the source in brackets using the EXACT format: [REF: SourceName-PageNum], e.g., [REF: contract_law.pdf-12].
+3. For every factual claim, you MUST append the source in brackets using the EXACT format: [SOURCE:chunk_id] inline, e.g., "The court stated [SOURCE:123e4567-e89b-12d3...]"
 4. Do not cite general knowledge unless explicitly asked for external info.
 
 WINNING PREDICTION REQUIREMENTS:
@@ -351,6 +400,7 @@ WINNING PREDICTION REQUIREMENTS:
 TOOL USAGE INSTRUCTIONS:
 - Whenever the user specifies a particular court (e.g., "[Jurisdiction Context: Delhi High Court]"), you MUST pass `jurisdiction="Delhi High Court"` to `search_legal_docs` tool.
 - If the user asks for cases from all courts, do not pass the jurisdiction parameter or pass "All".
+- Use summarize_legal_document when the user asks you to summarize an uploaded document or case text.
 
 Use tools wisely."""
         
@@ -358,7 +408,7 @@ Use tools wisely."""
             messages = [SystemMessage(content=system_prompt)] + messages
         
         response = llm.invoke(messages)
-        return {"messages": [response]}
+        return {"messages": [response], "step_count": state.get("step_count", 0) + 1}
     
     # 6. Build the graph
     workflow = StateGraph(AgentState)

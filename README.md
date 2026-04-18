@@ -1,116 +1,188 @@
-# AI-Driven Legal Research & Prediction Engine
+# Lumina Copilot — AI Legal Research Engine
 
-An advanced legal tech platform that combines **Retrieval-Augmented Generation (RAG)** for legal research with **State-of-the-Art Machine Learning** for case outcome prediction.
+**Lumina Copilot** is an AI-driven research and prediction engine for Indian commercial courts. It combines a hybrid retrieval pipeline (FAISS + BM25 + CrossEncoder reranking) with a stacking ML model (XGBoost + LightGBM + Random Forest) to retrieve semantically similar case law and predict litigation outcomes. A LangGraph multi-tool agent orchestrates all reasoning and exposes a clean FastAPI backend to a React/Vite/Tailwind frontend.
 
-![Dashboard Preview](frontend/src/assets/react.svg)
+---
 
-## 🚀 Key Features
+## Architecture Overview
 
-### 1. Intelligent Legal Research (RAG)
-- **Chat Interface**: Ask complex legal questions in natural language.
-- **Source Citations**: Answers are grounded in your uploaded PDF documents (Acts, Case Laws).
-- **Agentic Workflow**: Uses LangGraph to orchestrate research, summarization, and drafting.
+Lumina operates on two parallel tracks:
 
-### 2. Case Outcome Prediction (Advanced ML)
-- **Stacking Ensemble**: Combines **XGBoost**, **LightGBM**, and **Random Forest** for robust predictions.
-- **BERT Semantic Embeddings**: Uses `all-MiniLM-L6-v2` to understand the deep semantic context of case descriptions (not just keywords).
-- **Dual Modes**: 
-    - **Advanced**: Uses full AI stack (Embeddings + Ensemble).
-    - **Legacy**: Uses metadata-only heuristic model.
-
-### 3. Modern Web Interface
-- **Frontend**: Faster, responsive UI built with **React**, **Vite**, and **Tailwind CSS v4**.
-- **Backend**: High-performance REST API powered by **FastAPI**.
-- **Visualizations**: Interactive charts for prediction confidence and probability distribution.
-
-## 🛠️ Technology Stack
-
-- **Frontend**: React, Tailwind CSS, Lucide Icons, Recharts, Axios.
-- **Backend**: FastAPI, Uvicorn, LangChain, LangGraph.
-- **ML/AI**: XGBoost, LightGBM, Scikit-Learn, Sentence-Transformers (BERT), Ollama (Local LLM).
-- **Database**: Milvus Lite (Vector Store for RAG).
-
-## 📦 Installation & Setup
-
-### Prerequisites
-- Python 3.9+
-- Node.js & npm
-- API Keys: `INDIAN_KANOON_API_TOKEN` (optional, for fetching real usage data).
-
-### 1. Backend Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/MayankJaideep/MajorProjectsSee.git
-cd MajorProjectsSee
-
-# Create and activate virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Create .env file
-echo "GROQ_API_KEY=your_key_here" > .env
+```
+User Query
+    │
+    ├─► Track 1: RAG Pipeline
+    │       1. InLegalBERT Dense Retrieval (FAISS / Milvus Lite)
+    │       2. BM25 Sparse Retrieval
+    │       3. Reciprocal Rank Fusion (RRF) merge
+    │       4. CrossEncoder Reranking
+    │       └─► Top-k chunks → LangGraph Agent → LLM (Gemini → OpenAI → Ollama)
+    │
+    └─► Track 2: ML Prediction
+            1. Enhanced Feature Extractor (20 features)
+            2. Stacking Model (XGBoost + LightGBM + Random Forest → Meta LR)
+            └─► Outcome probability + confidence score
 ```
 
-### 2. Frontend Setup
+**Vector Store**: Milvus Lite (default, zero-dependency, file-based). FAISS is the automatic fallback if Milvus is unavailable. The Docker Compose Milvus stack (`infrastructure/docker-compose.yml`) is for production-scale deployments only.
+
+**LLM Fallback Chain**: Gemini 1.5 Flash (`GEMINI_API_KEY`) → GPT-4o-mini (`OPENAI_API_KEY`) → Ollama `llama3.2` (local, no key required).
+
+---
+
+## Prerequisites
+
+| Requirement | Version |
+|---|---|
+| Python | 3.9+ |
+| Node.js | 18+ |
+| Ollama | latest |
+
+Install Ollama and pull the default model:
+```bash
+# Install from https://ollama.com
+ollama pull llama3.2
+```
+
+---
+
+## Setup
+
+### 1. Environment Configuration
+
+Copy the template and fill in your keys:
+```bash
+cp .env.example .env
+```
+
+Edit `.env`:
+```dotenv
+GEMINI_API_KEY="your_gemini_key"           # Primary LLM – get from aistudio.google.com
+OPENAI_API_KEY="your_openai_key"           # Fallback LLM (optional)
+LUMINA_API_KEY="secret-lumina-key-2026"    # Backend API key for frontend
+ALLOWED_ORIGINS="http://localhost:5173"    # Comma-separated frontend URLs
+INDIAN_KANOON_API_TOKEN="your_token"       # Optional: live case law search
+```
+
+### 2. Backend
+
+```bash
+cd "1-Rag"
+python -m venv .venv && source .venv/bin/activate
+pip install -r ../requirements.txt
+uvicorn api:app --reload --port 8000
+```
+
+> **Important**: The backend must be started from within the `1-Rag/` directory. Starting from the project root will cause import failures.
+
+### 3. Frontend
 
 ```bash
 cd frontend
 npm install
-```
-
-## 🏃‍♂️ Running the Application
-
-### Start the Backend API
-```bash
-# From the project root
-cd 1-Rag
-uvicorn api:app --reload
-```
-The API will run at `http://localhost:8000`.
-
-### Start the Frontend
-```bash
-# From the frontend directory
 npm run dev
 ```
-The UI will be accessible at `http://localhost:5173`.
 
-## 🧠 ML Model Training
+---
 
-To retrain the outcome prediction models with your own data:
+## Running
 
-1. **Add Data**: Place CSV data in `1-Rag/data/` or use the fetcher script.
-2. **Fetch Real Cases**:
-    ```bash
-    python scripts/fetch_real_cases.py
-    ```
-3. **Train Model**:
-    ```bash
-    python 1-Rag/train_improved_model.py
-    ```
+| Service | Command | URL |
+|---|---|---|
+| Backend | `cd 1-Rag && uvicorn api:app --reload` | http://localhost:8000 |
+| Frontend | `cd frontend && npm run dev` | http://localhost:5173 |
 
-## 📂 Project Structure
+---
 
+## API Endpoints
+
+| Method | Path | Description | Body / Response |
+|---|---|---|---|
+| `GET` | `/health` | System health check | `{status, vector_db, bm25_loaded, ml_model_loaded, docs_indexed, llm}` |
+| `POST` | `/chat` | Main agent chat | `{message: str (max 4000 chars), history, language, jurisdiction}` |
+| `POST` | `/upload` | Ingest PDF documents | `multipart/form-data` with `files[]` (PDF only, ≤20 MB each, magic bytes verified) |
+| `POST` | `/similar_cases` | Find similar cases by description | `{description, jurisdiction?}` |
+| `POST` | `/predict` | Predict case outcome | `{description, court?, sections?}` |
+| `GET` | `/llm-status` | Active LLM provider info | `{provider, model}` |
+| `POST` | `/visualize/timeline` | Extract chronological timeline from text | `{text}` |
+| `GET` | `/performance-metrics` | Request latency and cache stats | JSON metrics object |
+
+All endpoints with model loading are wrapped with a **60-second asyncio timeout** and return `504` with a user-friendly message on timeout.
+
+---
+
+## Data & Training
+
+### Fetching Training Data
+
+Case law data is collected using `generate_training_data.py` and `enhanced_training_data.py` from the Indian Kanoon API (requires `INDIAN_KANOON_API_TOKEN`):
+
+```bash
+cd 1-Rag
+python generate_training_data.py    # Basic case set
+python enhanced_training_data.py    # Expanded, augmented set
 ```
-├── 1-Rag/
-│   ├── api.py                  # FastAPI Backend
-│   ├── core_agent.py           # LangGraph Agent Logic
-│   ├── outcome_predictor.py    # Prediction Inference Engine
-│   ├── train_improved_model.py # ML Training Pipeline
-│   ├── bert_feature_extractor.py # Semantic Embedding Logic
-│   └── models/                 # Saved ML Models & Encoders
-├── frontend/
-│   ├── src/
-│   │   ├── components/         # React Components (Chat, Dashboard, etc.)
-│   │   └── App.jsx             # Main Frontend Logic
-├── scripts/
-│   └── fetch_real_cases.py     # Data Collection Utility
-└── requirements.txt
+
+Data is saved to `1-Rag/dataset/`.
+
+### Retraining the Stacking Model
+
+```bash
+cd 1-Rag
+python train_hybrid_model.py        # Base stacking model
+python train_improved_model.py      # Improved variant (run after base)
 ```
 
-## 📝 License
-This project is open-source.
+Trained models are saved to `1-Rag/models/stacking_model.pkl` and related files.
+
+---
+
+## Model Notes
+
+The stacking ensemble uses three base learners:
+- **XGBoost** — captures non-linear feature interactions
+- **LightGBM** — high-speed gradient boosting for large datasets
+- **Random Forest** — variance reduction via bagging
+
+A **Logistic Regression** meta-learner is trained on the out-of-fold predictions of the base learners.
+
+Feature engineering is handled by `enhanced_feature_extractor.py` (20 features, production) and `feature_extractor.py` (6 features, legacy fallback, `__version__ = "legacy"`).
+
+**Improvement levers**:
+- Add more jurisdiction-specific training data (High Court vs. Supreme Court)
+- Fine-tune InLegalBERT on your ingested corpus using the FAISS store
+- Increase `chunk_size` and `chunk_overlap` in the document ingestion pipeline for better semantic chunking
+
+---
+
+## Vector Store Notes
+
+| Mode | When Used |
+|---|---|
+| **Milvus Lite** | Default. Zero infra, file-based (`milvus_demo.db`). Works out of the box. |
+| **FAISS** | Automatic fallback if Milvus Lite fails. Index saved to `1-Rag/faiss_store/`. |
+| **Docker Milvus** | Production only. Run `docker-compose -f infrastructure/docker-compose.yml up`. |
+
+---
+
+## Running Tests
+
+```bash
+# From project root
+pip install pytest
+pytest
+```
+
+| Test File | Coverage |
+|---|---|
+| `tests/test_api.py` | Core API endpoint smoke tests |
+| `tests/test_predictor.py` | OutcomePredictor (valid, empty, long input) |
+| `tests/test_feature_extractor.py` | Enhanced (20 features) + Fallback (6 features) |
+| `tests/test_rag_pipeline.py` | LegalNER entity extraction |
+| `tests/test_translations.py` | Multi-language translation pipeline |
+
+---
+
+## License
+
+MIT

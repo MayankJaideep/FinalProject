@@ -1,8 +1,43 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Book, Loader2, Paperclip, FileText, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Send, Bot, User, Book, Loader2, Paperclip, FileText, CheckCircle2, AlertTriangle, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const CitationBadge = ({ href, children }) => {
+    if (!href?.startsWith('citation:')) {
+        return <a href={href} target="_blank" rel="noreferrer" className="text-nyaya-primary hover:underline">{children}</a>;
+    }
+    const chunkId = href.split('citation:')[1];
+    const [open, setOpen] = useState(false);
+    const [data, setData] = useState(null);
+    useEffect(() => {
+        if (open && !data) {
+            axios.post('http://localhost:8000/resolve-citations', { chunk_ids: [chunkId] })
+                .then(res => setData(res.data.citations[0] || {source: "Unknown", excerpt: "No data", page: "?"}))
+                .catch(err => setData({source: "Error", excerpt: "Failed to load", page: "?"}));
+        }
+    }, [open, data, chunkId]);
+
+    return (
+        <span className="relative inline-block ml-1 z-20">
+            <sup onClick={() => setOpen(!open)} className="cursor-pointer px-1.5 py-0.5 bg-indigo-100 text-indigo-700 font-bold rounded-md hover:bg-indigo-200">
+                {children}
+            </sup>
+            {open && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-white border shadow-xl rounded-xl z-50 text-xs text-left font-normal normal-case tracking-normal">
+                    <button onClick={() => setOpen(false)} className="absolute top-1 right-2 w-4 h-4 text-slate-400">x</button>
+                    {data ? (
+                        <>
+                            <div className="font-bold text-indigo-800 break-all pr-4">{data.source} (Pg {data.page})</div>
+                            <div className="text-slate-600 mt-1 italic leading-relaxed">"{data.excerpt}..."</div>
+                        </>
+                    ) : <Loader2 className="w-4 h-4 animate-spin text-indigo-500"/>}
+                </div>
+            )}
+        </span>
+    );
+};
 
 const API_URL = 'http://localhost:8000';
 
@@ -24,6 +59,48 @@ export default function ChatInterface() {
     };
 
     useEffect(scrollToBottom, [messages]);
+    
+    // Session Persistence
+    useEffect(() => {
+        const saved = localStorage.getItem('lumina_chat_history');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (parsed.length > 0) setMessages(parsed);
+            } catch(e) {}
+        }
+    }, []);
+
+    useEffect(() => {
+        if (messages.length > 1) {
+            localStorage.setItem('lumina_chat_history', JSON.stringify(messages));
+        }
+    }, [messages]);
+    
+    useEffect(() => {
+        const handleSendToChat = (e) => {
+            setInput(prev => prev + (prev ? '\n\n' : '') + e.detail);
+        };
+        window.addEventListener('sendToChat', handleSendToChat);
+        return () => window.removeEventListener('sendToChat', handleSendToChat);
+    }, []);
+
+    const handleExport = async (format) => {
+        try {
+            const response = await axios.post(`${API_URL}/export/session`, {
+                messages: messages.filter(m => !m.isSystem), 
+                format, 
+                title: "Lumina Research Session"
+            }, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `session_export.${format}`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+        } catch(e) { console.error('Export failed:', e) }
+    };
 
     const handleSend = async () => {
         if (!input.trim()) return;
@@ -144,15 +221,32 @@ export default function ChatInterface() {
                     </div>
                 </div>
 
-                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-nyaya-primary/10 border border-nyaya-primary/20 text-nyaya-primary text-xs font-semibold">
-                    <Bot size={14} />
-                    Lumina Active
+                <div className="hidden lg:flex items-center gap-4">
+                    <div className="flex bg-nyaya-surface border rounded-lg shadow-sm overflow-hidden text-xs">
+                        <button onClick={() => handleExport('pdf')} className="px-3 py-1.5 hover:bg-slate-100 border-r flex items-center gap-1 font-bold text-slate-600"><Download size={14}/> PDF</button>
+                        <button onClick={() => handleExport('docx')} className="px-3 py-1.5 hover:bg-slate-100 flex items-center gap-1 font-bold text-slate-600"><Download size={14}/> DOCX</button>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-nyaya-primary/10 border border-nyaya-primary/20 text-nyaya-primary text-xs font-semibold">
+                        <Bot size={14} />
+                        Lumina Active
+                    </div>
                 </div>
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 relative z-10 custom-scrollbar scroll-smooth">
-                {messages.map((msg, idx) => (
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 relative z-10 custom-scrollbar scroll-smooth flex flex-col">
+                {messages.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center px-4 animate-in fade-in zoom-in duration-300">
+                        <div className="w-16 h-16 bg-nyaya-primary/10 text-nyaya-primary rounded-full flex items-center justify-center mb-6 shadow-sm border border-nyaya-primary/20">
+                            <MessageSquare size={32} />
+                        </div>
+                        <h2 className="text-xl font-bold text-nyaya-text mb-2">Research Assistant</h2>
+                        <p className="text-nyaya-muted max-w-sm">
+                            Ask a legal question or upload a PDF to begin
+                        </p>
+                    </div>
+                ) : (
+                    messages.map((msg, idx) => (
                     <motion.div
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -195,10 +289,13 @@ export default function ChatInterface() {
                                                 prose-p:my-2 prose-p:text-nyaya-muted prose-p:leading-7
                                                 prose-headings:text-nyaya-text prose-headings:font-medium prose-headings:mt-6 prose-headings:mb-3
                                                 prose-strong:text-nyaya-text
-                                                prose-ul:my-3 prose-li:text-nyaya-muted
-                                                prose-a:text-nyaya-primary prose-a:no-underline hover:prose-a:underline
                                                 prose-code:bg-nyaya-surface prose-code:text-nyaya-primary prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:border prose-code:border-nyaya-border/50">
-                                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                                <ReactMarkdown components={{ a: CitationBadge }}>
+                                                    {(() => {
+                                                        let count = 1;
+                                                        return msg.content.replace(/\[SOURCE:([a-zA-Z0-9-]+)\]/g, (match, chunkId) => `[${count++}](citation:${chunkId})`);
+                                                    })()}
+                                                </ReactMarkdown>
                                             </div>
                                         ) : (
                                             <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
@@ -206,7 +303,7 @@ export default function ChatInterface() {
                                     </div>
 
                                     {/* Sources */}
-                                    {msg.sources && msg.sources.length > 0 && (
+                                    {msg.sources && msg.sources.length > 0 ? (
                                         <div className="flex flex-wrap gap-2 mt-3 p-3 bg-nyaya-surface/50 rounded-xl border border-nyaya-border/30">
                                             <div className="w-full text-[10px] font-bold text-nyaya-muted uppercase tracking-widest mb-1 pl-1">Sources Cited</div>
                                             {msg.sources.map((src, i) => (
@@ -216,12 +313,14 @@ export default function ChatInterface() {
                                                 </span>
                                             ))}
                                         </div>
+                                    ) : (
+                                        <div className="pt-2"></div>
                                     )}
                                 </div>
                             </>
                         )}
                     </motion.div>
-                ))}
+                )))}
 
                 {loading && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4 w-full max-w-[95%] mx-auto">

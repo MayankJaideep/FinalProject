@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Loader, Tag } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8000';
 
 export default function PDFUploader() {
     const [files, setFiles] = useState([]);
+    const [uploadedDocs, setUploadedDocs] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [status, setStatus] = useState(null); // success | error
     const fileInputRef = useRef(null);
@@ -35,6 +36,12 @@ export default function PDFUploader() {
                 },
             });
             console.log(response.data);
+            
+            // Append with tags
+            const tags = response.data.tags || {};
+            const newDocs = files.map(f => ({ name: f.name, size: f.size, tags }));
+            setUploadedDocs(prev => [...newDocs, ...prev]);
+            
             setStatus('success');
             setFiles([]);
         } catch (error) {
@@ -119,6 +126,36 @@ export default function PDFUploader() {
                     </button>
                 </div>
             </div>
+
+            {/* Uploaded Library Display / Empty State */}
+            {uploadedDocs.length > 0 ? (
+                <div className="bg-white rounded-[2.5rem] p-10 border border-nyaya-border shadow-sm text-left relative z-10 w-full mb-6">
+                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-nyaya-text"><Tag className="text-nyaya-primary" /> Auto-Tagged Library</h3>
+                    <div className="space-y-4">
+                        {uploadedDocs.map((doc, i) => (
+                            <div key={i} className="flex flex-col md:flex-row gap-4 justify-between border-b border-nyaya-border/50 pb-4 last:border-0 last:pb-0 px-2 hover:bg-slate-50 transition-colors rounded-xl p-2">
+                                <div>
+                                    <div className="font-bold text-slate-800 text-[15px]">{doc.name}</div>
+                                    <div className="text-xs text-slate-500 mt-1">{(doc.size/1024/1024).toFixed(2)} MB • {doc.tags?.type || 'Legal Document'}</div>
+                                </div>
+                                <div className="flex flex-wrap gap-2 items-center">
+                                    {doc.tags?.court && <span className="px-2 py-1 bg-amber-50 text-amber-700 text-[10px] uppercase font-bold rounded-md border border-amber-200">{doc.tags.court}</span>}
+                                    {doc.tags?.acts && doc.tags.acts.slice(0, 2).map((a, j) => (
+                                        <span key={j} className="px-2 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-md border border-indigo-200">{a}</span>
+                                    ))}
+                                    {doc.tags?.sections && doc.tags.sections.slice(0, 3).map((s, j) => (
+                                        <span key={j} className="px-2 py-1 bg-purple-50 text-purple-700 text-[10px] font-bold rounded-md border border-purple-200">Sec {s}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : !uploading && (
+                <div className="flex flex-col items-center justify-center text-center py-4 text-nyaya-muted animate-in fade-in">
+                    <p className="text-sm font-medium">Upload PDF documents (Acts, Case Laws) to build your knowledge base</p>
+                </div>
+            )}
 
             <div className="text-center text-[13px] font-medium text-nyaya-muted/70 flex items-center justify-center gap-2">
                 <FileText size={14} className="opacity-50" />

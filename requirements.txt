@@ -1,46 +1,57 @@
-langchain
+# Core API
+fastapi
+uvicorn
 python-dotenv
-ipykernel
+python-multipart
+
+# LangChain / LangGraph
+langchain
 langchain-community
-pypdf
-pymupdf
-wikipedia
 langchain-text-splitters
 langchain-openai
-chromadb
-sentence_transformers
 langchain_huggingface
-faiss-cpu
-langchain_chroma
 langchain-groq
-streamlit
-google-generativeai
 langchain-google-genai
-streamlit_option_menu
-pypdf2
+langchain-ollama
 langgraph
+
+# Vector Store
+faiss-cpu  # fallback vector store, only needed if milvus_demo.db fails
+pymilvus>=2.4.0
+milvus-lite>=2.4.0
+chromadb
+langchain_chroma
+
+# ML / Feature Extraction
 scikit-learn
 pandas
 numpy
 joblib
-plotly
-
-# ML & NLP Models
-transformers
-torch
-sentencepiece
-
-# ML & Advanced Models
 xgboost>=2.0.0
 lightgbm>=4.0.0
 imbalanced-learn>=0.11.0
 
-# Optimization & Explanation
-optuna
-shap
-matplotlib
+# NLP
+transformers
+torch
+sentencepiece
+sentence_transformers
 rank_bm25
 spacy
-pymilvus>=2.4.0
-milvus-lite>=2.4.0
-langchain-ollama
+
+# Utilities
+pypdf
+pymupdf
+pypdf2
+wikipedia
+shap
+matplotlib
+plotly
+optuna
+reportlab
+python-docx
+icalendar
+deep-translator
+streamlit
+streamlit_option_menu
+ipykernel

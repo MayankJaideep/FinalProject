@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, MessageSquare, BookOpen, Upload, Clock, Scale } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LayoutDashboard, MessageSquare, BookOpen, Upload, Clock, Scale, Gavel, CalendarClock, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import ChatInterface from './components/ChatInterface';
 import Dashboard from './components/Dashboard';
 import PDFUploader from './components/PDFUploader';
 import Chronology from './components/Chronology';
 import LandingPage from './components/LandingPage';
+import ArgumentBuilder from './components/ArgumentBuilder';
+import DeadlineTracker from './components/DeadlineTracker';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   const [activeTab, setActiveTab] = useState('landing');
@@ -15,7 +19,32 @@ function App() {
     { id: 'dashboard', label: 'Prediction Dashboard', icon: LayoutDashboard },
     { id: 'chronology', label: 'Case Timeline', icon: Clock },
     { id: 'upload', label: 'Knowledge Base', icon: Upload },
+    { id: 'argument', label: 'Argument Builder', icon: Gavel },
+    { id: 'deadline', label: 'Deadline Tracker', icon: CalendarClock },
   ];
+
+  const [health, setHealth] = useState({
+    status: 'checking',
+    vector_db: 'checking',
+    bm25_loaded: false,
+    ml_model_loaded: false,
+    docs_indexed: 0,
+    llm: 'checking'
+  });
+
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        const res = await axios.get('http://localhost:8000/health');
+        setHealth(res.data);
+      } catch (err) {
+        setHealth(prev => ({ ...prev, status: 'error' }));
+      }
+    };
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 30000); // 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   if (activeTab === 'landing') {
     return <LandingPage onGetStarted={() => setActiveTab('chat')} />;
@@ -65,15 +94,30 @@ function App() {
           <div className="bg-nyaya-bg rounded-2xl p-4 text-[13px] text-nyaya-muted font-medium border border-nyaya-border/50 shadow-inner">
             <div className="flex items-center justify-between mb-3">
               <span className="text-nyaya-muted/80">System Status</span>
-              <span className="flex items-center gap-1.5 text-emerald-600 font-bold text-[10px] uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
-                Active
+              <span className={`flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-widest px-2 py-1 rounded-md border ${health.status === 'ok' ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : (health.status === 'checking' ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-rose-600 bg-rose-50 border-rose-200')}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${health.status === 'ok' ? 'bg-emerald-500 animate-pulse' : (health.status === 'checking' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500')} shadow-sm`}></span>
+                {health.status === 'ok' ? 'Active' : (health.status === 'checking' ? 'Connecting...' : 'Offline')}
               </span>
             </div>
-            <div className="flex items-center justify-between text-[12px]">
-              <span className="text-nyaya-muted/70">Vector DB</span>
-              <span className="text-nyaya-text">Connected</span>
-            </div>
+            
+            <AnimatePresence mode="popLayout">
+              <motion.div className="space-y-2 mt-2" layout>
+                {[
+                  { label: "Vector DB", val: health.vector_db, isGood: health.vector_db === 'milvus_lite' || health.vector_db === 'connected' },
+                  { label: "LLM Provider", val: health.llm, isGood: health.llm !== 'checking' && health.llm !== 'unavailable' && health.llm !== 'error' },
+                  { label: "BM25 Index", val: health.bm25_loaded ? 'Loaded' : 'Waiting', isGood: health.bm25_loaded },
+                  { label: "Predictive Model", val: health.ml_model_loaded ? 'Ready' : 'Offline', isGood: health.ml_model_loaded }
+                ].map(item => (
+                  <motion.div key={item.label} initial={{opacity:0}} animate={{opacity:1}} className="flex items-center justify-between text-[11px]">
+                    <span className="text-nyaya-muted/70 flex items-center gap-1.5">
+                      <div className={`w-1.5 h-1.5 rounded-full ${health.status === 'checking' ? 'bg-amber-400' : (item.isGood ? 'bg-emerald-400' : 'bg-rose-400')}`}></div>
+                      {item.label}
+                    </span>
+                    <span className="text-nyaya-text capitalize">{item.val}</span>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
@@ -96,10 +140,14 @@ function App() {
               exit={{ opacity: 0, scale: 0.98, y: -10 }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             >
-              {activeTab === 'chat' && <ChatInterface />}
-              {activeTab === 'dashboard' && <Dashboard />}
-              {activeTab === 'chronology' && <Chronology />}
-              {activeTab === 'upload' && <PDFUploader />}
+              <ErrorBoundary>
+                {activeTab === 'chat' && <ChatInterface />}
+                {activeTab === 'dashboard' && <Dashboard />}
+                {activeTab === 'chronology' && <Chronology />}
+                {activeTab === 'upload' && <PDFUploader />}
+                {activeTab === 'argument' && <ArgumentBuilder />}
+                {activeTab === 'deadline' && <DeadlineTracker />}
+              </ErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </main>

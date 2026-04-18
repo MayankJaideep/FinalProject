@@ -24,6 +24,10 @@ class TimelineEvent(BaseModel):
     date: str = Field(description="Date in YYYY-MM-DD format, or 'Unknown' if cannot be determined")
     title: str = Field(description="Brief title/name of the event (max 10 words)")
     description: str = Field(description="Detailed description of what happened")
+
+class TimelineEventList(BaseModel):
+    """Schema for a list of timeline events"""
+    events: List[TimelineEvent] = Field(description="List of chronological events extracted from the text")
     
 class TimelineExtractor:
     """Extract chronological events from legal case text"""
@@ -37,7 +41,7 @@ class TimelineExtractor:
         )
         
         # Parser for structured output
-        self.parser = JsonOutputParser(pydantic_object=TimelineEvent)
+        self.parser = JsonOutputParser(pydantic_object=TimelineEventList)
         
     def extract_date_paragraphs(self, text: str) -> List[str]:
         """
@@ -123,7 +127,9 @@ Extract events from the following legal text:"""
             })
             
             # Handle both list and single object responses
-            if isinstance(result, list):
+            if isinstance(result, dict) and "events" in result:
+                events = result["events"]
+            elif isinstance(result, list):
                 events = result
             elif isinstance(result, dict):
                 events = [result]

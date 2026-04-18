@@ -150,6 +150,15 @@ export default function Dashboard() {
                         exit={{ opacity: 0, y: -20 }}
                         className="space-y-10"
                     >
+                        {!formData.description && !error && (
+                            <div className="flex flex-col items-center justify-center text-center py-12 animate-in fade-in">
+                                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-6 shadow-sm border border-indigo-100">
+                                    <Scale size={32} />
+                                </div>
+                                <h2 className="text-xl font-bold text-nyaya-text mb-2">Prediction Dashboard</h2>
+                                <p className="text-nyaya-muted max-w-sm">Enter a case description to predict its likely outcome</p>
+                            </div>
+                        )}
                         {error && (
                             <div className="bg-rose-50 border border-rose-200 text-rose-700 px-6 py-4 rounded-2xl flex items-center justify-between shadow-sm">
                                 <div className="flex items-center gap-3">
@@ -261,37 +270,42 @@ export default function Dashboard() {
 
 
                 {/* ------------------------------------------------------------------------- */}
-                {/* STEP 2: LOADING STATE */}
-                {/* ------------------------------------------------------------------------- */}
                 {currentStep === SECTIONS.LOADING && (
                     <motion.div
                         key="loading"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="h-[60vh] flex flex-col items-center justify-center bg-nyaya-surface rounded-[2rem] border border-nyaya-border relative overflow-hidden shadow-2xl"
+                        className="space-y-6"
                     >
-                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 backdrop-blur-3xl animate-pulse"></div>
-
-                        <div className="relative z-10 flex flex-col items-center">
-                            <div className="w-32 h-32 mb-8 relative flex items-center justify-center">
-                                {/* Outer pulsating rings */}
-                                <div className="absolute inset-0 border-[6px] border-indigo-100 rounded-full"></div>
-                                <div className="absolute inset-0 border-[6px] border-indigo-600 rounded-full border-t-transparent animate-spin" style={{ animationDuration: '1.5s' }}></div>
-                                <div className="absolute inset-2 border-[4px] border-purple-400/30 rounded-full border-b-transparent animate-spin" style={{ animationDuration: '2s', animationDirection: 'reverse' }}></div>
-                                <Activity size={40} className="text-indigo-600" />
-                            </div>
-                            <h3 className="text-3xl font-black text-nyaya-text mb-4 tracking-tight">Mining Case Law</h3>
-                            <p className="text-nyaya-muted text-[16px] max-w-lg text-center leading-relaxed font-medium">
-                                Vectorizing your facts and evaluating semantic similarity across 5.4 million historic judgments to extract empirical analytics...
-                            </p>
-
-                            <div className="mt-12 flex gap-3 text-sm font-bold text-nyaya-text/60 animate-pulse">
-                                <div className="h-2 w-2 bg-indigo-500 rounded-full"></div>
-                                <div className="h-2 w-2 bg-indigo-500 rounded-full" style={{ animationDelay: '0.2s' }}></div>
-                                <div className="h-2 w-2 bg-indigo-500 rounded-full" style={{ animationDelay: '0.4s' }}></div>
-                            </div>
+                        {/* Skeleton Header */}
+                        <div className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-10 shadow-sm space-y-4 animate-pulse">
+                            <div className="h-4 w-32 bg-nyaya-border rounded-full" />
+                            <div className="h-8 w-56 bg-nyaya-border rounded-full" />
+                            <div className="h-4 w-full bg-nyaya-border rounded-full" />
+                            <div className="h-4 w-4/5 bg-nyaya-border rounded-full" />
                         </div>
+                        {/* Skeleton Stats Row */}
+                        <div className="grid grid-cols-3 gap-6">
+                            {[...Array(3)].map((_, i) => (
+                                <div key={i} className="bg-nyaya-surface border border-nyaya-border rounded-2xl p-6 animate-pulse space-y-4">
+                                    <div className="h-4 w-24 bg-nyaya-border rounded-full" />
+                                    <div className="h-8 w-16 bg-nyaya-border rounded-full" />
+                                </div>
+                            ))}
+                        </div>
+                        {/* Skeleton Case Cards */}
+                        {[...Array(2)].map((_, i) => (
+                            <div key={i} className="bg-nyaya-surface border border-nyaya-border rounded-2xl p-8 animate-pulse space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="h-5 w-48 bg-nyaya-border rounded-full" />
+                                    <div className="h-6 w-16 bg-nyaya-border rounded-full" />
+                                </div>
+                                <div className="h-4 w-full bg-nyaya-border rounded-full" />
+                                <div className="h-4 w-3/4 bg-nyaya-border rounded-full" />
+                                <div className="h-4 w-1/2 bg-nyaya-border rounded-full" />
+                            </div>
+                        ))}
                     </motion.div>
                 )}
 
@@ -413,6 +427,76 @@ export default function Dashboard() {
                             </div>
                         </section>
 
+                        {/* SHAP EXPLAINABILITY PANEL */}
+                        {results.explanation && results.explanation.top_features && (
+                            <>
+                            <div className="w-full h-px bg-nyaya-border my-8"></div>
+                            <section className="space-y-6">
+                                <h2 className="text-2xl font-black text-nyaya-text flex items-center gap-3">
+                                    <Activity size={24} className="text-indigo-600" />
+                                    Why this prediction? (XAI)
+                                </h2>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Feature Importance (SHAP) */}
+                                    <div className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-10 shadow-sm flex flex-col">
+                                        <h3 className="text-[16px] font-bold text-nyaya-text mb-2">SHAP Feature Contributions</h3>
+                                        <p className="text-sm text-nyaya-muted mb-6">Factors driving the stacking model's outcome prediction</p>
+                                        
+                                        <div className="flex-1 min-h-[250px]">
+                                            <ResponsiveContainer width="100%" height={250}>
+                                                <BarChart data={results.explanation.top_features} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                                    <XAxis type="number" />
+                                                    <YAxis dataKey="feature" type="category" width={120} tick={{ fontSize: 12 }} />
+                                                    <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '8px' }} />
+                                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                                                        {results.explanation.top_features.map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={entry.direction === 'positive' ? '#4F46E5' : '#E11D48'} />
+                                                        ))}
+                                                    </Bar>
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Confidence Band */}
+                                    <div className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-10 shadow-sm flex flex-col justify-center">
+                                         <h3 className="text-[16px] font-bold text-nyaya-text mb-2">Confidence Band</h3>
+                                         <p className="text-sm text-nyaya-muted mb-8">Empirical probability range</p>
+                                         
+                                         <div className="relative pt-6 pb-2">
+                                            <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-indigo-500/30 absolute rounded-full border border-indigo-500/50"
+                                                    style={{ 
+                                                        left: `${results.explanation.confidence_band.low * 100}%`,
+                                                        width: `${(results.explanation.confidence_band.high - results.explanation.confidence_band.low) * 100}%` 
+                                                    }}
+                                                />
+                                            </div>
+                                            
+                                            <div className="absolute top-0 flex flex-col items-center" style={{ left: `${results.explanation.confidence_band.low * 100}%`, transform: 'translateX(-50%)' }}>
+                                                <span className="text-xs font-bold text-slate-500 mb-1">Low</span>
+                                                <div className="h-4 w-px bg-slate-400" />
+                                            </div>
+                                            
+                                            <div className="absolute top-0 flex flex-col items-center" style={{ left: `${results.explanation.confidence_band.high * 100}%`, transform: 'translateX(-50%)' }}>
+                                                <span className="text-xs font-bold text-slate-500 mb-1">High</span>
+                                                <div className="h-4 w-px bg-slate-400" />
+                                            </div>
+                                            
+                                            <div className="flex justify-between mt-4 text-sm font-bold text-nyaya-text">
+                                                <span>{Math.round(results.explanation.confidence_band.low * 100)}%</span>
+                                                <span>{Math.round(results.explanation.confidence_band.high * 100)}%</span>
+                                            </div>
+                                         </div>
+                                    </div>
+                                </div>
+                            </section>
+                            </>
+                        )}
+                        
                         <div className="w-full h-px bg-nyaya-border my-8"></div>
 
                         {/* ROW 2: COMPARABLE PRECEDENTS */}
@@ -425,7 +509,7 @@ export default function Dashboard() {
                             </h2>
 
                             <div className="space-y-6">
-                                {results.cases.map(item => (
+                                {results.cases.slice(0, 3).map(item => (
                                     <div key={item.id} className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-8 shadow-sm hover:shadow-lg transition-all duration-300 relative group overflow-hidden">
 
                                         {/* Top Header */}

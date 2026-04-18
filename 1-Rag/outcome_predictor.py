@@ -9,6 +9,7 @@ import numpy as np
 import joblib
 from typing import Dict, Any
 import warnings
+import shap
 
 warnings.filterwarnings('ignore')
 
@@ -165,8 +166,61 @@ class OutcomePredictor:
             dismissal_risk = outcome_probs.get('dismissed', 0.0)
             appeal_success = outcome_probs.get('allowed', 0.0)
             
-            # XAI Feature Contributions (Explainability)
-            feature_contributions = self.get_feature_contributions(features, confidence, use_bert)
+            # XAI Feature Contributions (Explainability) using SHAP
+            feature_contributions = []
+            try:
+                base_estimator = None
+                if hasattr(self.model, 'estimators_') and len(self.model.estimators_) > 0:
+                    base_estimator = self.model.estimators_[0]
+                else:
+                    base_estimator = self.model
+                
+                explainer = shap.TreeExplainer(base_estimator)
+                shap_values = explainer.shap_values(X)
+                
+                # Use base feature names but extend for BERT
+                feature_names_to_use = list(self.feature_names)
+                if len(feature_names_to_use) < X.shape[1]:
+                    feature_names_to_use += [f"Semantic_F{i}" for i in range(X.shape[1] - len(feature_names_to_use))]
+                    
+                val_array = shap_values[0] if isinstance(shap_values, list) else shap_values[0]
+                
+                # In case for binary/multiclass output shape differs
+                if len(val_array.shape) > 1:
+                    val_array = val_array[:, pred_idx] if len(val_array.shape) > 1 else val_array
+                if isinstance(val_array, np.ndarray) and len(val_array.shape) > 0 and val_array.shape[0] > 1:
+                  # Take the first instance logic or handle matrix
+                  if len(val_array.shape) == 2:
+                      val_array = val_array[0] # first sample
+                
+                # Create flat list if val_array gets weird
+                val_array = np.array(val_array).flatten()
+
+                # Safety check
+                if len(val_array) != len(feature_names_to_use):
+                    raise ValueError("SHAP shape mismatch")
+                    
+                contribs = dict(zip(feature_names_to_use, val_array))
+                top_features = sorted(contribs.items(), key=lambda x: abs(x[1]), reverse=True)[:5]
+                feature_contributions = [{"feature": k[:30], "value": float(v), "direction": "positive" if v > 0 else "negative"} for k, v in top_features]
+            except Exception as e:
+                print(f"⚠️ SHAP calculation failed or skipped: {e}")
+                raw_contribs = self.get_feature_contributions(features, confidence, use_bert)
+                feature_contributions = [
+                    {"feature": k, "value": float(v), "direction": "positive"} 
+                    for k, v in list(raw_contribs.items())[:5]
+                ]
+
+            confidence_band = {
+                "low": round(max(0.01, confidence - 0.08), 2),
+                "high": round(min(0.99, confidence + 0.08), 2)
+            }
+            
+            explanation = {
+                "top_features": feature_contributions,
+                "confidence_band": confidence_band,
+                "similar_precedents": [] # Handled later
+            }
 
             return {
                 'predicted_outcome': outcome,
@@ -179,7 +233,7 @@ class OutcomePredictor:
                     'case_dismissal_risk': round(dismissal_risk * 100, 1),
                     'appeal_success_rate': round(appeal_success * 100, 1),
                 },
-                'feature_contributions': feature_contributions,
+                'explanation': explanation,
                 'method': 'Stacking Ensemble (BERT+ML)' if use_bert else 'Legacy Model (Metadata Only)'
             }
             
