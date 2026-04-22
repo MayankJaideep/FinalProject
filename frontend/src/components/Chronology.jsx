@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Clock, Calendar, FileText, Loader2, AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = '/api';
 
 export default function Chronology() {
     const [caseText, setCaseText] = useState('');

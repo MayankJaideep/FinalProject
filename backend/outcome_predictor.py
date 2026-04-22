@@ -15,7 +15,7 @@ warnings.filterwarnings('ignore')
 
 try:
     from bert_feature_extractor import bert_extractor
-except ImportError:
+except (ImportError, ValueError):
     bert_extractor = None
 
 class OutcomePredictor:
@@ -73,9 +73,8 @@ class OutcomePredictor:
             print(f"⚠️ Prediction Model not found in {self.model_dir}: {e}")
             return False
 
-    def prepare_features(self, features: Dict[str, Any], use_bert: bool = True) -> np.ndarray:
+    def prepare_features(self, features: Dict[str, Any]) -> np.ndarray:
         """Encode and scale features for inference"""
-        # Metadata Features
         # Metadata Features
         # Dynamically determine categorical features from the stored encoders
         categorical_features = list(self.feature_encoders.keys())
@@ -106,40 +105,28 @@ class OutcomePredictor:
         
         # BERT Features
         if self.bert_extractor:
-            if use_bert:
-                # Normal Advanced Mode
-                text = features.get('description', features.get('title', ''))
-                embedding = self.bert_extractor.get_text_embedding(text)
-                X_bert = embedding.reshape(1, -1)
-            else:
-                # Legacy Mode: Simulate missing semantic knowledge
-                dim = getattr(self.bert_extractor, 'embedding_dim', 768)
-                X_bert = np.zeros((1, dim))
+            text = features.get('description', features.get('title', ''))
+            embedding = self.bert_extractor.get_text_embedding(text)
+            X_bert = embedding.reshape(1, -1)
             
             # Combine
             X = np.hstack([X_meta, X_bert])
         else:
             X = X_meta
 
-        # Scale the combined features (matches 771 dims)
+        # Scale the combined features
         X = self.scaler.transform(X)
             
         return X
 
-    def predict(self, features: Dict[str, Any], model_version: str = "advanced") -> Dict[str, Any]:
-        """Predict outcome"""
+    def predict(self, features: Dict[str, Any]) -> Dict[str, Any]:
+        """Predict outcome with SHAP explainability"""
         if self.model is None:
             if not self.load_model():
                 return {"error": "Model not loaded"}
         
         try:
-            # For 'legacy' mode, we can simulate a simpler model by NOT providing BERT features
-            # (or passing zeros) if the main model relies on them.
-            # Ideally, we would load a separate `legacy_model.pkl` but for now we simulate
-            # the effect of "No Semantic Knowledge".
-            
-            use_bert = (model_version == "advanced")
-            X = self.prepare_features(features, use_bert=use_bert)
+            X = self.prepare_features(features)
             
             # Predict
             probs = self.model.predict_proba(X)[0]
@@ -147,30 +134,23 @@ class OutcomePredictor:
             outcome = self.outcome_encoder.inverse_transform([pred_idx])[0]
             confidence = float(probs[pred_idx])
             
-            if confidence >= 0.8:
-                confidence_level = "High"
-            elif confidence >= 0.6:
-                confidence_level = "Medium"
-            else:
-                confidence_level = "Low"
-            
-            
-            outcome_probs = {
-                self.outcome_encoder.inverse_transform([i])[0]: float(prob)
-                for i, prob in enumerate(probs)
+            # Probability for "Favorable" outcome
+            # We assume 'allowed' or similar labels map to favorable.
+            # For simplicity, we'll return the probability of the predicted class if favorable,
+            # or map the classes specifically if we know the labels.
+            outcome_mapping = {
+                'allowed': 'Favorable',
+                'partly_allowed': 'Favorable',
+                'dismissed': 'Unfavorable',
+                'settlement': 'Neutral'
             }
+            predicted_outcome_labeled = outcome_mapping.get(outcome.lower(), "Neutral")
             
-            # Derived Legal Metrics
-            petitioner_win_prob = outcome_probs.get('allowed', 0.0) + outcome_probs.get('partly_allowed', 0.0) + outcome_probs.get('settlement', 0.0)
-            respondent_win_prob = outcome_probs.get('dismissed', 0.0)
-            dismissal_risk = outcome_probs.get('dismissed', 0.0)
-            appeal_success = outcome_probs.get('allowed', 0.0)
-            
-            # XAI Feature Contributions (Explainability) using SHAP
-            feature_contributions = []
+            # XAI Feature Contributions using SHAP
+            top_factors = []
             try:
-                base_estimator = None
-                if hasattr(self.model, 'estimators_') and len(self.model.estimators_) > 0:
+                # Use the XGBoost or first estimator if it's a StackingClassifier
+                if hasattr(self.model, 'estimators_'):
                     base_estimator = self.model.estimators_[0]
                 else:
                     base_estimator = self.model
@@ -182,65 +162,42 @@ class OutcomePredictor:
                 feature_names_to_use = list(self.feature_names)
                 if len(feature_names_to_use) < X.shape[1]:
                     feature_names_to_use += [f"Semantic_F{i}" for i in range(X.shape[1] - len(feature_names_to_use))]
-                    
-                val_array = shap_values[0] if isinstance(shap_values, list) else shap_values[0]
                 
-                # In case for binary/multiclass output shape differs
-                if len(val_array.shape) > 1:
-                    val_array = val_array[:, pred_idx] if len(val_array.shape) > 1 else val_array
-                if isinstance(val_array, np.ndarray) and len(val_array.shape) > 0 and val_array.shape[0] > 1:
-                  # Take the first instance logic or handle matrix
-                  if len(val_array.shape) == 2:
-                      val_array = val_array[0] # first sample
-                
-                # Create flat list if val_array gets weird
+                # Handle multiclass SHAP values
+                if isinstance(shap_values, list):
+                    val_array = shap_values[pred_idx][0]
+                elif len(shap_values.shape) == 3: # (samples, features, classes)
+                    val_array = shap_values[0, :, pred_idx]
+                else:
+                    val_array = shap_values[0]
+
                 val_array = np.array(val_array).flatten()
-
-                # Safety check
-                if len(val_array) != len(feature_names_to_use):
-                    raise ValueError("SHAP shape mismatch")
-                    
-                contribs = dict(zip(feature_names_to_use, val_array))
-                top_features = sorted(contribs.items(), key=lambda x: abs(x[1]), reverse=True)[:5]
-                feature_contributions = [{"feature": k[:30], "value": float(v), "direction": "positive" if v > 0 else "negative"} for k, v in top_features]
-            except Exception as e:
-                print(f"⚠️ SHAP calculation failed or skipped: {e}")
-                raw_contribs = self.get_feature_contributions(features, confidence, use_bert)
-                feature_contributions = [
-                    {"feature": k, "value": float(v), "direction": "positive"} 
-                    for k, v in list(raw_contribs.items())[:5]
+                
+                shap_pairs = sorted(
+                    zip(feature_names_to_use, val_array),
+                    key=lambda x: abs(x[1]),
+                    reverse=True
+                )[:5]
+                
+                top_factors = [
+                    {"feature": name[:30], "impact": round(float(val), 4), "direction": "positive" if val > 0 else "negative"}
+                    for name, val in shap_pairs
                 ]
-
-            confidence_band = {
-                "low": round(max(0.01, confidence - 0.08), 2),
-                "high": round(min(0.99, confidence + 0.08), 2)
-            }
-            
-            explanation = {
-                "top_features": feature_contributions,
-                "confidence_band": confidence_band,
-                "similar_precedents": [] # Handled later
-            }
+            except Exception as e:
+                print(f"⚠️ SHAP calculation failed: {e}")
+                top_factors = []
 
             return {
-                'predicted_outcome': outcome,
-                'confidence': confidence,
-                'confidence_level': confidence_level,
-                'probabilities': outcome_probs,
-                'legal_metrics': {
-                    'petitioner_win_probability': round(petitioner_win_prob * 100, 1),
-                    'respondent_win_probability': round(respondent_win_prob * 100, 1),
-                    'case_dismissal_risk': round(dismissal_risk * 100, 1),
-                    'appeal_success_rate': round(appeal_success * 100, 1),
-                },
-                'explanation': explanation,
-                'method': 'Stacking Ensemble (BERT+ML)' if use_bert else 'Legacy Model (Metadata Only)'
+                "predicted_outcome": predicted_outcome_labeled,
+                "outcome_probability": round(confidence, 4),
+                "confidence_score": round(confidence, 4), # Simplified
+                "top_factors": top_factors,
+                "feature_vector": features # Pass to LLM context
             }
             
         except Exception as e:
             import traceback
             traceback.print_exc()
-            print(f"❌ Prediction Error: {str(e)}")
             return {"error": f"Internal Prediction Error: {str(e)}"}
             
     def get_feature_contributions(self, features: Dict[str, Any], confidence: float, use_bert: bool) -> Dict[str, float]:

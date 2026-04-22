@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Book, Loader2, Paperclip, FileText, CheckCircle2, AlertTriangle, Download } from 'lucide-react';
+import { Send, Bot, User, Book, Loader2, Paperclip, FileText, CheckCircle2, AlertTriangle, Download, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,7 +13,7 @@ const CitationBadge = ({ href, children }) => {
     const [data, setData] = useState(null);
     useEffect(() => {
         if (open && !data) {
-            axios.post('http://localhost:8000/resolve-citations', { chunk_ids: [chunkId] })
+            axios.post('/api/resolve-citations', { chunk_ids: [chunkId] })
                 .then(res => setData(res.data.citations[0] || {source: "Unknown", excerpt: "No data", page: "?"}))
                 .catch(err => setData({source: "Error", excerpt: "Failed to load", page: "?"}));
         }
@@ -39,7 +39,7 @@ const CitationBadge = ({ href, children }) => {
     );
 };
 
-const API_URL = 'http://localhost:8000';
+const API_URL = '/api';
 
 export default function ChatInterface() {
     const [messages, setMessages] = useState([
@@ -142,6 +142,14 @@ export default function ChatInterface() {
         }
     };
 
+    const handleClearChat = () => {
+        if (window.confirm("Are you sure you want to clear the entire chat history?")) {
+            const initialMessage = { role: 'assistant', content: 'Hello! I am Lumina Copilot. How can I help you with your legal research today?', isSystem: false };
+            setMessages([initialMessage]);
+            localStorage.removeItem('lumina_chat_history');
+        }
+    };
+
     const handlePdfUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -222,6 +230,14 @@ export default function ChatInterface() {
                 </div>
 
                 <div className="hidden lg:flex items-center gap-4">
+                    <button 
+                        onClick={handleClearChat}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold hover:bg-rose-100 transition-colors"
+                        title="Clear Chat History"
+                    >
+                        <Trash2 size={14} />
+                        Clear Chat
+                    </button>
                     <div className="flex bg-nyaya-surface border rounded-lg shadow-sm overflow-hidden text-xs">
                         <button onClick={() => handleExport('pdf')} className="px-3 py-1.5 hover:bg-slate-100 border-r flex items-center gap-1 font-bold text-slate-600"><Download size={14}/> PDF</button>
                         <button onClick={() => handleExport('docx')} className="px-3 py-1.5 hover:bg-slate-100 flex items-center gap-1 font-bold text-slate-600"><Download size={14}/> DOCX</button>

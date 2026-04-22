@@ -11,6 +11,11 @@ import ArgumentBuilder from './components/ArgumentBuilder';
 import DeadlineTracker from './components/DeadlineTracker';
 import ErrorBoundary from './components/ErrorBoundary';
 
+// Global Axios Configuration for Authentication
+const API_KEY = 'development'; // This should ideally come from env, but matches backend default
+axios.defaults.headers.common['Authorization'] = `Bearer ${API_KEY}`;
+axios.defaults.headers.common['X-API-Key'] = API_KEY;
+
 function App() {
   const [activeTab, setActiveTab] = useState('landing');
 
@@ -35,7 +40,7 @@ function App() {
   useEffect(() => {
     const fetchHealth = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/health');
+        const res = await axios.get('/api/health');
         setHealth(res.data);
       } catch (err) {
         setHealth(prev => ({ ...prev, status: 'error' }));

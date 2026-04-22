@@ -19,8 +19,6 @@ langgraph
 faiss-cpu  # fallback vector store, only needed if milvus_demo.db fails
 pymilvus>=2.4.0
 milvus-lite>=2.4.0
-chromadb
-langchain_chroma
 
 # ML / Feature Extraction
 scikit-learn
@@ -40,18 +38,10 @@ rank_bm25
 spacy
 
 # Utilities
-pypdf
 pymupdf
-pypdf2
-wikipedia
 shap
 matplotlib
 plotly
-optuna
 reportlab
 python-docx
-icalendar
 deep-translator
-streamlit
-streamlit_option_menu
-ipykernel

@@ -11,6 +11,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, AI
 from langchain_ollama import ChatOllama
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
+from llm_utils import get_llm
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langgraph.graph import StateGraph, END, START
@@ -22,14 +23,9 @@ import uuid
 from performance_optimizer import perf_monitor, cached_api_call
 
 # Import enhanced components
-try:
-    from enhanced_feature_extractor import EnhancedFeatureExtractor
-    feature_extractor = EnhancedFeatureExtractor()
-    print("✅ Using Enhanced Feature Extractor (20 features)")
-except ImportError:
-    from feature_extractor import FeatureExtractor
-    feature_extractor = FeatureExtractor()
-    print("⚠️  Using Basic Feature Extractor (6 features)")
+from enhanced_feature_extractor import EnhancedFeatureExtractor
+feature_extractor = EnhancedFeatureExtractor()
+print("✅ Using Enhanced Feature Extractor (20 features)")
 
 from langgraph.graph.message import add_messages
 from outcome_predictor import OutcomePredictor
@@ -318,36 +314,11 @@ def create_agent(vector_store, bm25_index=None, bm25_corpus=None):
     # 2. Create tool list
     tools = [search_legal_docs, search_indian_kanoon, predict_case_outcome, summarize_legal_document, extract_entities]
     
-    # 3. Create optimized LLM (Gemini -> OpenAI -> Ollama)
-    llm = None
-    global ACTIVE_LLM_PROVIDER, ACTIVE_LLM_MODEL
-    
-    if os.getenv("GEMINI_API_KEY"):
-        try:
-            llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1, google_api_key=os.getenv("GEMINI_API_KEY"))
-            ACTIVE_LLM_PROVIDER = "gemini"
-            ACTIVE_LLM_MODEL = "gemini-1.5-flash"
-            print("✅ LLM initialized: Gemini 1.5 Flash")
-        except Exception as e:
-            print(f"⚠️ Failed to initialize Gemini: {e}")
-            
-    if llm is None and os.getenv("OPENAI_API_KEY"):
-        try:
-            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=os.getenv("OPENAI_API_KEY"))
-            ACTIVE_LLM_PROVIDER = "openai"
-            ACTIVE_LLM_MODEL = "gpt-4o-mini"
-            print("✅ LLM initialized: GPT-4o-mini")
-        except Exception as e:
-            print(f"⚠️ Failed to initialize OpenAI: {e}")
-            
-    if llm is None:
-        try:
-            llm = ChatOllama(model="llama3.2", temperature=0.1)
-            ACTIVE_LLM_PROVIDER = "ollama"
-            ACTIVE_LLM_MODEL = "llama3.2"
-            print("✅ LLM initialized: Ollama Llama 3.2")
-        except Exception as e:
-            print(f"⚠️ Failed to initialize Ollama: {e}")
+    # 3. Lazy LLM initialization
+    llm, provider = get_llm()
+    ACTIVE_LLM_PROVIDER = provider
+    ACTIVE_LLM_MODEL = getattr(llm, "model", getattr(llm, "model_name", "unknown"))
+    print(f"✅ LLM initialized: {ACTIVE_LLM_PROVIDER} ({ACTIVE_LLM_MODEL})")
 
     
     # 4. Create tool node

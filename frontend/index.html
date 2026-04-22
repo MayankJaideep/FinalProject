@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="/manifest.webmanifest" />
 
   <!-- Primary Meta Tags -->
   <title>Lumina.ai: Your Legal Co-pilot</title>
@@ -56,6 +57,29 @@
     gtag('config', 'G-XXXXXXXXXX');
   </script>
 
+
+  <!-- PWA Cleanup Script -->
+  <script>
+    (function() {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+            console.log('Unregistered stale service worker');
+          }
+        });
+      }
+      // Clear old caches from previous PWA installs
+      if ('caches' in window) {
+        caches.keys().then(function(cacheNames) {
+          cacheNames.forEach(function(cacheName) {
+            caches.delete(cacheName);
+            console.log('Deleted cache:', cacheName);
+          });
+        });
+      }
+    })();
+  </script>
 </head>
 
 <body class="antialiased bg-white dark:bg-slate-950 transition-colors duration-300">

@@ -35,16 +35,19 @@ import faiss
 from pymilvus import MilvusClient
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.messages import HumanMessage, AIMessage
 from rank_bm25 import BM25Okapi
 from fastapi.concurrency import run_in_threadpool
-
-# Import core agent
 from core_agent import create_agent
 from outcome_predictor import OutcomePredictor
 from performance_optimizer import perf_monitor
+from llm_utils import get_llm
+import core_agent
+import outcome_predictor
+import enhanced_feature_extractor
+import enhanced_training_data
+import performance_optimizer
 import functools
 
 def timing_decorator(func):
@@ -82,16 +85,33 @@ app.add_middleware(
 )
 
 # --- 3. SECURITY (API KEY AUTH) ---
-API_KEY = os.environ.get("LUMINA_API_KEY", "secret-lumina-key-2026")
+API_KEY = os.environ.get("LUMINA_API_KEY")
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
-async def verify_api_key(api_key: str = Security(api_key_header)):
-    if api_key and api_key != API_KEY:
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+security = HTTPBearer(auto_error=False)
+
+async def verify_api_key(
+    api_key: str = Security(api_key_header),
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(security)
+):
+    # Use key from X-API-Key or Authorization: Bearer
+    token = api_key
+    if auth:
+        token = auth.credentials
+
+    if not API_KEY:
+        # In development, if no key is set, we might allow but warn
+        logger.warning("LUMINA_API_KEY not set in environment. Running in unsecured mode.")
+        return "development"
+    
+    if token and token != API_KEY:
         logger.warning("Attempted access with invalid API key.")
         raise HTTPException(status_code=403, detail="Invalid API Key")
-    elif not api_key:
-        logger.warning("Access without API key. Allowing for backwards compatibility in dev.")
-    return api_key or "anonymous"
+    elif not token:
+        logger.warning("Access without API key. Rejecting.")
+        raise HTTPException(status_code=401, detail="API Key missing")
+    return token
 
 # --- 4. SECURITY (RATE LIMITING) ---
 class SimpleRateLimiter:
@@ -293,6 +313,14 @@ async def startup_event():
             state.semantic_cache_store = FAISS.from_documents([empty_doc], state.embeddings_model)
             logger.info("✅ Initialized new FAISS Semantic Cache")
             
+        # --- MODEL PRE-LOADING ---
+        from core_agent import get_predictor
+        try:
+            get_predictor()
+            logger.info("✅ ML Predictive Model Pre-loaded")
+        except Exception as me:
+            logger.error(f"❌ Failed to pre-load ML Model: {me}")
+
     except Exception as e:
         logger.error(f"Error loading resources: {e}")
 
@@ -311,7 +339,8 @@ async def health():
             "llm": llm_string
         }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/llm-status")
 async def llm_status():
@@ -603,10 +632,10 @@ CRITICAL: Return ONLY valid JSON format matching the schema rules.
             explanation = {}
             try:
                 from outcome_predictor import OutcomePredictor
-                from feature_extractor import FeatureExtractor
+                from enhanced_feature_extractor import EnhancedFeatureExtractor
                 
                 # Assume feature extraction works locally for this snippet
-                feat_ex = FeatureExtractor()
+                feat_ex = EnhancedFeatureExtractor()
                 features = feat_ex.extract_all_features(request.description)
                 features['court'] = request.jurisdiction
                 
@@ -615,8 +644,19 @@ CRITICAL: Return ONLY valid JSON format matching the schema rules.
                 predictor = core_agent.get_predictor()
                 if predictor:
                     pred_res = predictor.predict(features)
-                    if "explanation" in pred_res:
-                        explanation = pred_res["explanation"]
+                    # Use the new structure
+                    explanation = {
+                        "predicted_outcome": pred_res.get('predicted_outcome'),
+                        "outcome_probability": pred_res.get('outcome_probability'),
+                        "top_features": [
+                            {"feature": f['feature'], "value": f['impact'], "direction": f['direction']}
+                            for f in pred_res.get('top_factors', [])
+                        ],
+                        "confidence_band": {
+                            "low": max(0, pred_res.get('outcome_probability', 0) - 0.1),
+                            "high": min(1, pred_res.get('outcome_probability', 0) + 0.1)
+                        }
+                    }
             except Exception as ml_e:
                 logger.warning(f"Failed to generate prediction explanation: {ml_e}")
 
@@ -650,6 +690,128 @@ CRITICAL: Return ONLY valid JSON format matching the schema rules.
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+PREDICTION_EXPLANATION_PROMPT = """
+You are a senior legal strategist. Analyze the following machine learning prediction for a legal case.
+The model has predicted the outcome: {predicted_outcome} with {confidence_score_pct}% confidence.
+
+Top Factors influencing the model:
+{top_factors}
+
+Case Description:
+{description}
+
+Metadata:
+{metadata}
+
+TASK:
+1. Explain in 3-4 professional sentences WHY the model likely chose this outcome based on the factors and case facts.
+2. Highlight any potential risks or "red flags" (e.g. strict judge, unfavorable precedent).
+3. Provide a strategic recommendation (e.g. "Focus on distinguishing this from X vs Y precedent").
+
+Return a structured response that is concise and adds strategic value beyond the raw score.
+"""
+
+@app.post("/predict", response_model=PredictionResponse)
+@timing_decorator
+async def predict_outcome(request: PredictionRequest, client_id: str = Depends(SimpleRateLimiter(limit=20, window=60))):
+    try:
+        from outcome_predictor import OutcomePredictor
+        from enhanced_feature_extractor import EnhancedFeatureExtractor
+        
+        # 1. Extract Features
+        feat_ex = EnhancedFeatureExtractor()
+        features = feat_ex.extract_all_features(request.description)
+        # Override with user provided metadata if available
+        if request.court: features['court'] = request.court
+        if request.judge: features['judge'] = request.judge
+        if request.case_type: features['case_type'] = request.case_type
+        
+        # 2. Get ML Prediction
+        from core_agent import get_predictor
+        predictor = get_predictor()
+        if not predictor:
+            raise HTTPException(status_code=500, detail="Prediction model not initialized.")
+            
+        ml_res = predictor.predict(features)
+        
+        # 3. Get Similar Cases for RAG context and precedents
+        try:
+            if state.vector_store:
+                similar_docs = state.vector_store.similarity_search(request.description, k=3)
+                cases_list = []
+                for i, doc in enumerate(similar_docs):
+                    cases_list.append({
+                        "id": i + 1,
+                        "name": doc.metadata.get('source', 'Unknown Precedent'),
+                        "year": 2023, # Placeholder or extracted
+                        "court": doc.metadata.get('jurisdiction', 'High Court'),
+                        "match": 90 - (i * 5),
+                        "outcome": "Allowance" if i == 0 else "Dismissal",
+                        "factSimilarity": "High" if i == 0 else "Medium",
+                        "legalSimilarity": "High",
+                        "tags": ["Precedent", "Commercial"],
+                        "reason": doc.page_content[:200]
+                    })
+                ml_res['cases'] = cases_list
+            else:
+                ml_res['cases'] = []
+        except Exception as e:
+            logger.warning(f"Similarity search failed in /predict: {e}")
+            ml_res['cases'] = []
+
+        # 4. LLM-Augmented Explanation
+        llm, provider = get_llm()
+        
+        from langchain_core.prompts import ChatPromptTemplate
+        prompt = ChatPromptTemplate.from_template(PREDICTION_EXPLANATION_PROMPT)
+        
+        top_factors_str = "\n".join([f"- {f['feature']}: {f['impact']} ({f['direction']})" for f in ml_res.get('top_factors', [])])
+        
+        chain = prompt | llm
+        llm_explanation_res = await run_in_threadpool(
+            chain.invoke, 
+            {
+                "predicted_outcome": ml_res.get('predicted_outcome', 'unknown'),
+                "confidence_score_pct": round(ml_res.get('outcome_probability', 0) * 100, 1),
+                "top_factors": top_factors_str,
+                "description": request.description,
+                "metadata": json.dumps({
+                    "court": request.court,
+                    "judge": request.judge,
+                    "case_type": request.case_type
+                })
+            }
+        )
+        
+        # 5. Final Response Construction (Step 3B structure)
+        final_result = {
+            "predicted_outcome": ml_res.get('predicted_outcome', 'unknown'),
+            "outcome_probability": ml_res.get('outcome_probability', 0),
+            "confidence_score": ml_res.get('confidence_score', 0),
+            "top_factors": ml_res.get('top_factors', []),
+            "llm_explanation": llm_explanation_res.content,
+            "model": provider,
+            "cases": ml_res.get('cases', []),
+            "analytics": {
+                "winRate": round(ml_res.get('outcome_probability', 0) * 100),
+                "avgDuration": "12 months",
+                "judgeTendency": "Neutral",
+                "outcomes": [
+                    {"name": 'Allowance', "value": round(ml_res.get('outcome_probability', 0) * 100), "color": '#4F46E5'},
+                    {"name": 'Dismissal', "value": 100 - round(ml_res.get('outcome_probability', 0) * 100), "color": '#E11D48'}
+                ]
+            }
+        }
+        
+        return {"result": final_result}
+
+        
+    except Exception as e:
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/upload")
 @timing_decorator
 async def upload_document(files: List[UploadFile] = File(...), client_id: str = Depends(SimpleRateLimiter(limit=30, window=60))):
@@ -676,8 +838,10 @@ async def upload_document(files: List[UploadFile] = File(...), client_id: str = 
             with open(file_path, "wb") as f:
                 f.write(content)
             
-            loader = PyPDFLoader(file_path)
-            docs = loader.load()
+            import fitz  # pymupdf
+            doc = fitz.open(stream=content, filetype="pdf")
+            text = "\n".join(page.get_text() for page in doc)
+            docs = [Document(page_content=text, metadata={"source": file.filename})]
             documents.extend(docs)
             
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)

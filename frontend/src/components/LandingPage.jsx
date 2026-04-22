@@ -37,7 +37,7 @@ export default function LandingPage({ onGetStarted }) {
             {/* Ultra-Premium Dark Ambient Background */}
             <div className="fixed inset-0 z-0 pointer-events-none">
                 {/* Noise Texture Overlay */}
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-multiply"></div>
+                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.03] mix-blend-multiply"></div>
                 {/* Subtle Glows */}
                 <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-nyaya-accent/10 blur-[120px] mix-blend-multiply" />
                 <div className="absolute top-[20%] right-[-10%] w-[30vw] h-[30vw] rounded-full bg-purple-500/5 blur-[120px] mix-blend-multiply" />

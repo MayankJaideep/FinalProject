@@ -91,17 +91,20 @@ export default function Dashboard() {
         setError(null);
 
         try {
-            const response = await axios.post(`http://localhost:8000/similar_cases`, {
+            // Using the new /predict endpoint which consolidates ML scores, SHAP, and LLM explanation
+            const response = await axios.post(`/api/predict`, {
                 description: formData.description,
-                jurisdiction: formData.court
+                court: formData.court,
+                judge: formData.judge,
+                case_type: formData.sections[0] || "Commercial"
             });
 
-            // Set dynamic results from backend
-            setResults(response.data);
+            // The consolidated response is in response.data.result
+            setResults(response.data.result);
             setCurrentStep(SECTIONS.RESULTS);
         } catch (err) {
             console.error('Analysis error:', err);
-            setError(err.response?.data?.detail || 'Failed to analyze cases. Make sure the backend FAISS store is populated.');
+            setError(err.response?.data?.detail || 'Failed to analyze cases. Make sure the backend is running.');
             setCurrentStep(SECTIONS.INPUT);
         }
     };
@@ -348,7 +351,7 @@ export default function Dashboard() {
                                 {/* Widget A: Donut */}
                                 <div className="bg-nyaya-surface border border-nyaya-border rounded-[2rem] p-10 shadow-sm flex flex-col items-center">
                                     <h3 className="text-[16px] font-bold text-nyaya-text mb-8 w-full">Historical Outcome Distribution</h3>
-                                    <div className="h-64 relative flex items-center justify-center w-full mb-8">
+                                    <div style={{ width: '100%', height: 300 }} className="relative flex items-center justify-center mb-8">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
@@ -426,6 +429,34 @@ export default function Dashboard() {
                                 </div>
                             </div>
                         </section>
+
+                        {/* ROW 1.5: AI STRATEGIC INTELLIGENCE */}
+                        {results.llm_explanation && (
+                            <section className="space-y-6">
+                                <h2 className="text-2xl font-black text-nyaya-text flex items-center gap-3">
+                                    <ShieldCheck size={24} className="text-indigo-600" />
+                                    AI Strategic Intelligence
+                                </h2>
+                                <div className="bg-[#1E1B4B] text-white rounded-[2rem] p-10 shadow-xl relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+                                    <div className="flex items-start gap-6 relative z-10">
+                                        <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg border border-indigo-400/30">
+                                            <Activity size={28} className="text-white" />
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-[12px] font-black uppercase tracking-[0.2em] text-indigo-300">Strategic Brief</span>
+                                                <div className="h-px w-12 bg-indigo-500/30"></div>
+                                                <span className="text-[11px] font-bold text-indigo-400 bg-indigo-900/50 px-2 py-0.5 rounded border border-indigo-800">Powered by {results.model}</span>
+                                            </div>
+                                            <p className="text-[17px] leading-relaxed font-medium text-indigo-50 italic">
+                                                {results.llm_explanation}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
 
                         {/* SHAP EXPLAINABILITY PANEL */}
                         {results.explanation && results.explanation.top_features && (
@@ -515,7 +546,9 @@ export default function Dashboard() {
                                         {/* Top Header */}
                                         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 border-b border-nyaya-border pb-6">
                                             <div className="space-y-2">
-                                                <h3 className="text-xl font-black text-nyaya-text leading-tight group-hover:text-indigo-600 transition-colors cursor-pointer">{item.name}</h3>
+                                                <h3 className="text-xl font-black text-nyaya-text leading-tight group-hover:text-indigo-600 transition-colors cursor-pointer">
+                                                    {typeof item.name === 'object' ? `${item.name.petitioner} vs ${item.name.respondent}` : item.name}
+                                                </h3>
                                                 <div className="flex flex-wrap items-center gap-4 text-[14px] font-bold text-nyaya-muted">
                                                     <span className="flex items-center gap-1.5"><Gavel size={16} /> {item.court}</span>
                                                     <span className="opacity-50">•</span>

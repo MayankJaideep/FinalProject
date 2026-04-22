@@ -12,7 +12,7 @@ export default function ArgumentBuilder() {
     const handleSubmit = async () => {
         setLoading(true); setError(null); setResult(null);
         try {
-            const res = await axios.post('http://localhost:8000/argument-builder', {
+            const res = await axios.post('/api/argument-builder', {
                 issue: formData.issue,
                 side: formData.side,
                 relevant_case_ids: formData.case_ids.split(',').map(s => s.trim()).filter(x => x)
@@ -82,22 +82,24 @@ export default function ArgumentBuilder() {
                                 ))}
                             </div>
                         ) : result ? (
-                            Object.entries(result).map(([section, text]) => (
-                                <motion.div key={section} initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} className="bg-white border rounded-2xl p-6 shadow-sm">
-                                    <div className="flex items-center justify-between mb-4 border-b pb-2">
-                                        <h3 className="text-lg font-black uppercase tracking-wide text-indigo-900">{section}</h3>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => copyText(text)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg" title="Copy"><Copy size={16} /></button>
-                                            {section === 'arguments' && (
-                                                <button onClick={() => sendToChat(text)} className="p-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg flex items-center gap-1" title="Send to Chat">
-                                                    <MessageSquarePlus size={16} /><span className="text-xs font-bold">Send to Chat</span>
-                                                </button>
-                                            )}
+                            <motion.div key="result-wrapper" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                                {Object.entries(result).map(([section, text]) => (
+                                    <motion.div key={section} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border rounded-2xl p-6 shadow-sm">
+                                        <div className="flex items-center justify-between mb-4 border-b pb-2">
+                                            <h3 className="text-lg font-black uppercase tracking-wide text-indigo-900">{section}</h3>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => copyText(text)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg" title="Copy"><Copy size={16} /></button>
+                                                {section === 'arguments' && (
+                                                    <button onClick={() => sendToChat(text)} className="p-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg flex items-center gap-1" title="Send to Chat">
+                                                        <MessageSquarePlus size={16} /><span className="text-xs font-bold">Send to Chat</span>
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="text-slate-700 whitespace-pre-wrap leading-relaxed">{text}</div>
-                                </motion.div>
-                            ))
+                                        <div className="text-slate-700 whitespace-pre-wrap leading-relaxed">{text}</div>
+                                    </motion.div>
+                                ))}
+                            </motion.div>
                         ) : (
                             <div className="h-full min-h-[500px] flex flex-col items-center justify-center bg-nyaya-surface/50 border-2 border-dashed border-nyaya-border rounded-[2rem] text-center p-12">
                                 <div className="w-16 h-16 bg-white border border-nyaya-border rounded-2xl flex items-center justify-center mb-6 shadow-sm text-nyaya-muted/40">

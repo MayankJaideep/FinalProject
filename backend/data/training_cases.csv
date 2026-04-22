@@ -1,0 +1,251 @@
+case_id,court,judge,case_type,year,complexity,legal_domain,outcome,plaintiff_win_probability,description
+CASE_2016_0001,Supreme Court of India,Justice B. Nair,Partnership Dispute,2018,5,Arbitration,plaintiff_win,0.439,Partnership dissolution and profit-sharing dispute filed in 2018.
+CASE_2016_0002,Rajasthan High Court,Justice S. Sharma,Commercial Fraud,2021,4,Contract Law,plaintiff_win,0.8,Commercial fraud and misrepresentation case filed in 2021.
+CASE_2018_0003,Madras High Court,Justice D. Verma,Commercial Fraud,2015,3,Arbitration,plaintiff_win,0.728,Commercial fraud and misrepresentation case filed in 2015.
+CASE_2023_0004,Gujarat High Court,Justice M. Singh,Shareholder Dispute,2024,6,Insolvency,defendant_win,0.731,Shareholder rights and corporate governance dispute filed in 2024.
+CASE_2015_0005,Bombay High Court,Justice B. Nair,Insolvency Proceedings,2020,3,Insolvency,plaintiff_win,0.572,Corporate insolvency resolution process under IBC filed in 2020.
+CASE_2020_0006,Delhi High Court,Justice S. Sharma,Insolvency Proceedings,2016,4,Competition Law,defendant_win,0.607,Corporate insolvency resolution process under IBC filed in 2016.
+CASE_2024_0007,Calcutta High Court,Justice C. Joshi,Breach of Contract,2022,5,Intellectual Property,dismissed,0.389,Commercial contract dispute regarding non-performance of obligations filed in 2022.
+CASE_2021_0008,Delhi High Court,Justice D. Verma,Partnership Dispute,2024,4,Competition Law,plaintiff_win,0.725,Partnership dissolution and profit-sharing dispute filed in 2024.
+CASE_2016_0009,Supreme Court of India,Justice L. Desai,Patent Dispute,2019,6,Intellectual Property,defendant_win,0.657,Patent validity and infringement dispute in technology sector filed in 2019.
+CASE_2016_0010,Gujarat High Court,Justice V. Reddy,Shareholder Dispute,2020,5,Corporate Law,plaintiff_win,0.476,Shareholder rights and corporate governance dispute filed in 2020.
+CASE_2018_0011,Calcutta High Court,Justice B. Nair,Joint Venture Dispute,2016,5,Corporate Law,defendant_win,0.437,Joint venture agreement breach and profit distribution dispute filed in 2016.
+CASE_2018_0012,Bombay High Court,Justice K. Rao,Insolvency Proceedings,2019,5,Arbitration,defendant_win,0.59,Corporate insolvency resolution process under IBC filed in 2019.
+CASE_2015_0013,Madras High Court,Justice H. Kapoor,Breach of Contract,2020,5,Securities Law,plaintiff_win,0.662,Commercial contract dispute regarding non-performance of obligations filed in 2020.
+CASE_2018_0014,Madhya Pradesh High Court,Justice B. Nair,Arbitration Matter,2018,4,Banking Law,plaintiff_win,0.498,Arbitration award enforcement and challenge proceedings filed in 2018.
+CASE_2022_0015,Bombay High Court,Justice V. Reddy,Copyright Violation,2018,3,Insolvency,defendant_win,0.62,Copyright infringement matter concerning unauthorized reproduction filed in 2018.
+CASE_2021_0016,Madhya Pradesh High Court,Justice N. Gupta,Arbitration Matter,2018,3,Corporate Law,plaintiff_win,0.645,Arbitration award enforcement and challenge proceedings filed in 2018.
+CASE_2016_0017,Supreme Court of India,Justice H. Kapoor,Trademark Infringement,2017,6,Corporate Law,defendant_win,0.548,Trademark infringement case involving brand protection and market confusion filed in 2017.
+CASE_2021_0018,Madhya Pradesh High Court,Justice S. Sharma,Insolvency Proceedings,2021,5,Banking Law,plaintiff_win,0.614,Corporate insolvency resolution process under IBC filed in 2021.
+CASE_2023_0019,Supreme Court of India,Justice L. Desai,Licensing Agreement,2016,3,Insolvency,defendant_win,0.577,Technology licensing and royalty payment dispute filed in 2016.
+CASE_2020_0020,Delhi High Court,Justice V. Reddy,Insolvency Proceedings,2017,6,Banking Law,plaintiff_win,0.569,Corporate insolvency resolution process under IBC filed in 2017.
+CASE_2019_0021,Rajasthan High Court,Justice C. Joshi,Copyright Violation,2023,5,Intellectual Property,defendant_win,0.8,Copyright infringement matter concerning unauthorized reproduction filed in 2023.
+CASE_2019_0022,Rajasthan High Court,Justice T. Iyer,Patent Dispute,2017,4,Competition Law,plaintiff_win,0.8,Patent validity and infringement dispute in technology sector filed in 2017.
+CASE_2023_0023,Rajasthan High Court,Justice A. Kumar,Commercial Fraud,2020,8,Banking Law,plaintiff_win,0.702,Commercial fraud and misrepresentation case filed in 2020.
+CASE_2020_0024,Calcutta High Court,Justice M. Singh,Breach of Contract,2018,7,Intellectual Property,plaintiff_win,0.768,Commercial contract dispute regarding non-performance of obligations filed in 2018.
+CASE_2022_0025,Delhi High Court,Justice C. Joshi,Intellectual Property,2017,3,Corporate Law,defendant_win,0.479,Comprehensive IP rights protection and licensing dispute filed in 2017.
+CASE_2023_0026,Bombay High Court,Justice V. Reddy,Intellectual Property,2024,4,Securities Law,dismissed,0.472,Comprehensive IP rights protection and licensing dispute filed in 2024.
+CASE_2023_0027,Madras High Court,Justice B. Nair,Partnership Dispute,2021,7,Competition Law,defendant_win,0.415,Partnership dissolution and profit-sharing dispute filed in 2021.
+CASE_2023_0028,Allahabad High Court,Justice S. Sharma,Patent Dispute,2018,5,Intellectual Property,plaintiff_win,0.642,Patent validity and infringement dispute in technology sector filed in 2018.
+CASE_2024_0029,Rajasthan High Court,Justice M. Singh,Commercial Fraud,2018,4,Contract Law,plaintiff_win,0.8,Commercial fraud and misrepresentation case filed in 2018.
+CASE_2015_0030,Madras High Court,Justice S. Sharma,Breach of Contract,2020,6,Intellectual Property,plaintiff_win,0.8,Commercial contract dispute regarding non-performance of obligations filed in 2020.
+CASE_2019_0031,Allahabad High Court,Justice M. Singh,Intellectual Property,2017,6,Banking Law,plaintiff_win,0.559,Comprehensive IP rights protection and licensing dispute filed in 2017.
+CASE_2022_0032,Gujarat High Court,Justice M. Singh,Trademark Infringement,2016,4,Securities Law,plaintiff_win,0.668,Trademark infringement case involving brand protection and market confusion filed in 2016.
+CASE_2021_0033,Allahabad High Court,Justice H. Kapoor,Licensing Agreement,2015,7,Intellectual Property,plaintiff_win,0.349,Technology licensing and royalty payment dispute filed in 2015.
+CASE_2020_0034,Delhi High Court,Justice M. Singh,Patent Dispute,2018,3,Banking Law,plaintiff_win,0.8,Patent validity and infringement dispute in technology sector filed in 2018.
+CASE_2017_0035,Calcutta High Court,Justice K. Rao,Patent Dispute,2016,5,Banking Law,defendant_win,0.768,Patent validity and infringement dispute in technology sector filed in 2016.
+CASE_2023_0036,Delhi High Court,Justice A. Kumar,Joint Venture Dispute,2023,6,Contract Law,dismissed,0.57,Joint venture agreement breach and profit distribution dispute filed in 2023.
+CASE_2018_0037,Bombay High Court,Justice N. Gupta,Shareholder Dispute,2022,7,Arbitration,dismissed,0.476,Shareholder rights and corporate governance dispute filed in 2022.
+CASE_2015_0038,Bombay High Court,Justice N. Gupta,Breach of Contract,2021,6,Insolvency,settlement,0.672,Commercial contract dispute regarding non-performance of obligations filed in 2021.
+CASE_2022_0039,Calcutta High Court,Justice N. Gupta,Licensing Agreement,2023,6,Banking Law,plaintiff_win,0.7,Technology licensing and royalty payment dispute filed in 2023.
+CASE_2019_0040,Madras High Court,Justice A. Kumar,Commercial Fraud,2023,5,Contract Law,plaintiff_win,0.8,Commercial fraud and misrepresentation case filed in 2023.
+CASE_2015_0041,Supreme Court of India,Justice T. Iyer,Shareholder Dispute,2023,5,Corporate Law,plaintiff_win,0.56,Shareholder rights and corporate governance dispute filed in 2023.
+CASE_2023_0042,Delhi High Court,Justice H. Kapoor,Copyright Violation,2016,4,Intellectual Property,defendant_win,0.674,Copyright infringement matter concerning unauthorized reproduction filed in 2016.
+CASE_2018_0043,Gujarat High Court,Justice S. Sharma,Commercial Fraud,2018,3,Contract Law,plaintiff_win,0.638,Commercial fraud and misrepresentation case filed in 2018.
+CASE_2021_0044,Madhya Pradesh High Court,Justice T. Iyer,Intellectual Property,2020,5,Insolvency,plaintiff_win,0.654,Comprehensive IP rights protection and licensing dispute filed in 2020.
+CASE_2020_0045,Madras High Court,Justice V. Reddy,Insolvency Proceedings,2017,7,Insolvency,defendant_win,0.447,Corporate insolvency resolution process under IBC filed in 2017.
+CASE_2016_0046,Supreme Court of India,Justice K. Rao,Commercial Fraud,2024,6,Intellectual Property,plaintiff_win,0.6,Commercial fraud and misrepresentation case filed in 2024.
+CASE_2018_0047,Rajasthan High Court,Justice V. Reddy,Copyright Violation,2020,4,Intellectual Property,defendant_win,0.679,Copyright infringement matter concerning unauthorized reproduction filed in 2020.
+CASE_2020_0048,Calcutta High Court,Justice R. Patel,Shareholder Dispute,2023,4,Insolvency,defendant_win,0.557,Shareholder rights and corporate governance dispute filed in 2023.
+CASE_2023_0049,Supreme Court of India,Justice L. Desai,Merger & Acquisition Dispute,2023,7,Insolvency,settlement,0.65,M&A transaction dispute regarding representations and warranties filed in 2023.
+CASE_2016_0050,Bombay High Court,Justice V. Reddy,Trademark Infringement,2016,7,Corporate Law,plaintiff_win,0.746,Trademark infringement case involving brand protection and market confusion filed in 2016.
+CASE_2024_0051,Madras High Court,Justice B. Nair,Arbitration Matter,2018,7,Insolvency,plaintiff_win,0.637,Arbitration award enforcement and challenge proceedings filed in 2018.
+CASE_2019_0052,Supreme Court of India,Justice S. Sharma,Joint Venture Dispute,2021,7,Insolvency,plaintiff_win,0.698,Joint venture agreement breach and profit distribution dispute filed in 2021.
+CASE_2020_0053,Bombay High Court,Justice L. Desai,Partnership Dispute,2017,5,Banking Law,defendant_win,0.504,Partnership dissolution and profit-sharing dispute filed in 2017.
+CASE_2021_0054,Rajasthan High Court,Justice A. Kumar,Trademark Infringement,2016,5,Corporate Law,plaintiff_win,0.643,Trademark infringement case involving brand protection and market confusion filed in 2016.
+CASE_2020_0055,Madhya Pradesh High Court,Justice D. Verma,Copyright Violation,2021,7,Corporate Law,plaintiff_win,0.384,Copyright infringement matter concerning unauthorized reproduction filed in 2021.
+CASE_2020_0056,Supreme Court of India,Justice P. Mehta,Patent Dispute,2018,4,Intellectual Property,plaintiff_win,0.785,Patent validity and infringement dispute in technology sector filed in 2018.
+CASE_2023_0057,Gujarat High Court,Justice T. Iyer,Licensing Agreement,2017,4,Arbitration,settlement,0.595,Technology licensing and royalty payment dispute filed in 2017.
+CASE_2017_0058,Gujarat High Court,Justice A. Kumar,Copyright Violation,2020,5,Securities Law,defendant_win,0.713,Copyright infringement matter concerning unauthorized reproduction filed in 2020.
+CASE_2018_0059,Calcutta High Court,Justice R. Patel,Supply Chain Dispute,2016,5,Securities Law,dismissed,0.406,Supply chain contract breach and delivery obligations dispute filed in 2016.
+CASE_2022_0060,Madras High Court,Justice M. Singh,Merger & Acquisition Dispute,2022,8,Competition Law,plaintiff_win,0.67,M&A transaction dispute regarding representations and warranties filed in 2022.
+CASE_2018_0061,Madras High Court,Justice A. Kumar,Joint Venture Dispute,2018,8,Securities Law,plaintiff_win,0.478,Joint venture agreement breach and profit distribution dispute filed in 2018.
+CASE_2016_0062,Calcutta High Court,Justice P. Mehta,Joint Venture Dispute,2023,5,Securities Law,settlement,0.383,Joint venture agreement breach and profit distribution dispute filed in 2023.
+CASE_2023_0063,Karnataka High Court,Justice A. Kumar,Trademark Infringement,2019,4,Corporate Law,plaintiff_win,0.74,Trademark infringement case involving brand protection and market confusion filed in 2019.
+CASE_2019_0064,Supreme Court of India,Justice S. Sharma,Commercial Fraud,2021,5,Competition Law,plaintiff_win,0.787,Commercial fraud and misrepresentation case filed in 2021.
+CASE_2020_0065,Gujarat High Court,Justice T. Iyer,Intellectual Property,2016,3,Securities Law,settlement,0.598,Comprehensive IP rights protection and licensing dispute filed in 2016.
+CASE_2018_0066,Calcutta High Court,Justice A. Kumar,Licensing Agreement,2021,4,Contract Law,plaintiff_win,0.654,Technology licensing and royalty payment dispute filed in 2021.
+CASE_2023_0067,Madras High Court,Justice P. Mehta,Insolvency Proceedings,2016,4,Competition Law,defendant_win,0.584,Corporate insolvency resolution process under IBC filed in 2016.
+CASE_2016_0068,Calcutta High Court,Justice D. Verma,Partnership Dispute,2021,4,Competition Law,plaintiff_win,0.599,Partnership dissolution and profit-sharing dispute filed in 2021.
+CASE_2019_0069,Rajasthan High Court,Justice R. Patel,Patent Dispute,2021,6,Securities Law,defendant_win,0.622,Patent validity and infringement dispute in technology sector filed in 2021.
+CASE_2017_0070,Madhya Pradesh High Court,Justice T. Iyer,Partnership Dispute,2021,6,Contract Law,plaintiff_win,0.627,Partnership dissolution and profit-sharing dispute filed in 2021.
+CASE_2018_0071,Gujarat High Court,Justice C. Joshi,Commercial Fraud,2024,5,Competition Law,plaintiff_win,0.8,Commercial fraud and misrepresentation case filed in 2024.
+CASE_2022_0072,Madras High Court,Justice D. Verma,Shareholder Dispute,2017,5,Intellectual Property,plaintiff_win,0.639,Shareholder rights and corporate governance dispute filed in 2017.
+CASE_2024_0073,Karnataka High Court,Justice S. Sharma,Merger & Acquisition Dispute,2018,3,Insolvency,plaintiff_win,0.581,M&A transaction dispute regarding representations and warranties filed in 2018.
+CASE_2018_0074,Bombay High Court,Justice A. Kumar,Breach of Contract,2018,4,Banking Law,plaintiff_win,0.8,Commercial contract dispute regarding non-performance of obligations filed in 2018.
+CASE_2016_0075,Allahabad High Court,Justice N. Gupta,Joint Venture Dispute,2024,3,Arbitration,plaintiff_win,0.771,Joint venture agreement breach and profit distribution dispute filed in 2024.
+CASE_2021_0076,Allahabad High Court,Justice N. Gupta,Patent Dispute,2017,3,Contract Law,defendant_win,0.787,Patent validity and infringement dispute in technology sector filed in 2017.
+CASE_2016_0077,Gujarat High Court,Justice M. Singh,Copyright Violation,2023,5,Banking Law,plaintiff_win,0.795,Copyright infringement matter concerning unauthorized reproduction filed in 2023.
+CASE_2018_0078,Delhi High Court,Justice K. Rao,Copyright Violation,2022,4,Competition Law,settlement,0.608,Copyright infringement matter concerning unauthorized reproduction filed in 2022.
+CASE_2022_0079,Madhya Pradesh High Court,Justice H. Kapoor,Licensing Agreement,2023,6,Securities Law,defendant_win,0.612,Technology licensing and royalty payment dispute filed in 2023.
+CASE_2023_0080,Allahabad High Court,Justice R. Patel,Licensing Agreement,2022,4,Banking Law,plaintiff_win,0.584,Technology licensing and royalty payment dispute filed in 2022.
+CASE_2018_0081,Calcutta High Court,Justice C. Joshi,Supply Chain Dispute,2023,5,Banking Law,defendant_win,0.514,Supply chain contract breach and delivery obligations dispute filed in 2023.
+CASE_2019_0082,Allahabad High Court,Justice S. Sharma,Licensing Agreement,2019,6,Arbitration,plaintiff_win,0.636,Technology licensing and royalty payment dispute filed in 2019.
+CASE_2020_0083,Rajasthan High Court,Justice S. Sharma,Copyright Violation,2017,7,Arbitration,plaintiff_win,0.8,Copyright infringement matter concerning unauthorized reproduction filed in 2017.
+CASE_2017_0084,Madras High Court,Justice S. Sharma,Insolvency Proceedings,2021,4,Competition Law,plaintiff_win,0.8,Corporate insolvency resolution process under IBC filed in 2021.
+CASE_2021_0085,Supreme Court of India,Justice M. Singh,Merger & Acquisition Dispute,2021,3,Securities Law,settlement,0.586,M&A transaction dispute regarding representations and warranties filed in 2021.
+CASE_2024_0086,Supreme Court of India,Justice H. Kapoor,Supply Chain Dispute,2024,5,Securities Law,plaintiff_win,0.719,Supply chain contract breach and delivery obligations dispute filed in 2024.
+CASE_2020_0087,Calcutta High Court,Justice C. Joshi,Insolvency Proceedings,2021,6,Arbitration,plaintiff_win,0.612,Corporate insolvency resolution process under IBC filed in 2021.
+CASE_2019_0088,Gujarat High Court,Justice K. Rao,Breach of Contract,2021,3,Competition Law,plaintiff_win,0.8,Commercial contract dispute regarding non-performance of obligations filed in 2021.
+CASE_2021_0089,Bombay High Court,Justice H. Kapoor,Shareholder Dispute,2017,4,Contract Law,settlement,0.603,Shareholder rights and corporate governance dispute filed in 2017.
+CASE_2024_0090,Madhya Pradesh High Court,Justice L. Desai,Breach of Contract,2016,3,Securities Law,plaintiff_win,0.735,Commercial contract dispute regarding non-performance of obligations filed in 2016.
+CASE_2022_0091,Bombay High Court,Justice A. Kumar,Partnership Dispute,2021,4,Competition Law,plaintiff_win,0.727,Partnership dissolution and profit-sharing dispute filed in 2021.
+CASE_2020_0092,Karnataka High Court,Justice C. Joshi,Insolvency Proceedings,2019,6,Securities Law,plaintiff_win,0.378,Corporate insolvency resolution process under IBC filed in 2019.
+CASE_2016_0093,Allahabad High Court,Justice A. Kumar,Licensing Agreement,2023,6,Contract Law,settlement,0.703,Technology licensing and royalty payment dispute filed in 2023.
+CASE_2020_0094,Madras High Court,Justice L. Desai,Trademark Infringement,2015,4,Contract Law,dismissed,0.555,Trademark infringement case involving brand protection and market confusion filed in 2015.
+CASE_2018_0095,Supreme Court of India,Justice T. Iyer,Copyright Violation,2018,5,Corporate Law,plaintiff_win,0.727,Copyright infringement matter concerning unauthorized reproduction filed in 2018.
+CASE_2016_0096,Madhya Pradesh High Court,Justice M. Singh,Shareholder Dispute,2019,7,Competition Law,plaintiff_win,0.707,Shareholder rights and corporate governance dispute filed in 2019.
+CASE_2024_0097,Delhi High Court,Justice C. Joshi,Merger & Acquisition Dispute,2017,6,Insolvency,plaintiff_win,0.443,M&A transaction dispute regarding representations and warranties filed in 2017.
+CASE_2015_0098,Calcutta High Court,Justice T. Iyer,Joint Venture Dispute,2021,5,Securities Law,dismissed,0.565,Joint venture agreement breach and profit distribution dispute filed in 2021.
+CASE_2018_0099,Delhi High Court,Justice T. Iyer,Licensing Agreement,2018,4,Intellectual Property,defendant_win,0.668,Technology licensing and royalty payment dispute filed in 2018.
+CASE_2019_0100,Madhya Pradesh High Court,Justice C. Joshi,Trademark Infringement,2024,6,Contract Law,plaintiff_win,0.626,Trademark infringement case involving brand protection and market confusion filed in 2024.
+CASE_2021_0101,Karnataka High Court,Justice S. Sharma,Intellectual Property,2020,6,Contract Law,defendant_win,0.8,Comprehensive IP rights protection and licensing dispute filed in 2020.
+CASE_2022_0102,Delhi High Court,Justice N. Gupta,Arbitration Matter,2022,5,Corporate Law,plaintiff_win,0.589,Arbitration award enforcement and challenge proceedings filed in 2022.
+CASE_2023_0103,Calcutta High Court,Justice T. Iyer,Supply Chain Dispute,2023,4,Banking Law,plaintiff_win,0.504,Supply chain contract breach and delivery obligations dispute filed in 2023.
+CASE_2024_0104,Calcutta High Court,Justice P. Mehta,Merger & Acquisition Dispute,2018,3,Intellectual Property,plaintiff_win,0.648,M&A transaction dispute regarding representations and warranties filed in 2018.
+CASE_2022_0105,Madras High Court,Justice C. Joshi,Shareholder Dispute,2024,6,Securities Law,plaintiff_win,0.538,Shareholder rights and corporate governance dispute filed in 2024.
+CASE_2022_0106,Karnataka High Court,Justice R. Patel,Shareholder Dispute,2018,8,Competition Law,settlement,0.474,Shareholder rights and corporate governance dispute filed in 2018.
+CASE_2020_0107,Calcutta High Court,Justice T. Iyer,Licensing Agreement,2019,8,Contract Law,defendant_win,0.355,Technology licensing and royalty payment dispute filed in 2019.
+CASE_2018_0108,Delhi High Court,Justice M. Singh,Licensing Agreement,2021,5,Banking Law,plaintiff_win,0.738,Technology licensing and royalty payment dispute filed in 2021.
+CASE_2018_0109,Allahabad High Court,Justice L. Desai,Licensing Agreement,2022,7,Banking Law,settlement,0.457,Technology licensing and royalty payment dispute filed in 2022.
+CASE_2016_0110,Calcutta High Court,Justice M. Singh,Insolvency Proceedings,2018,5,Insolvency,defendant_win,0.529,Corporate insolvency resolution process under IBC filed in 2018.
+CASE_2020_0111,Allahabad High Court,Justice D. Verma,Intellectual Property,2020,7,Securities Law,dismissed,0.613,Comprehensive IP rights protection and licensing dispute filed in 2020.
+CASE_2023_0112,Karnataka High Court,Justice P. Mehta,Licensing Agreement,2022,3,Insolvency,plaintiff_win,0.776,Technology licensing and royalty payment dispute filed in 2022.
+CASE_2018_0113,Delhi High Court,Justice B. Nair,Patent Dispute,2020,6,Intellectual Property,plaintiff_win,0.8,Patent validity and infringement dispute in technology sector filed in 2020.
+CASE_2017_0114,Madras High Court,Justice M. Singh,Licensing Agreement,2022,6,Insolvency,defendant_win,0.635,Technology licensing and royalty payment dispute filed in 2022.
+CASE_2023_0115,Madhya Pradesh High Court,Justice V. Reddy,Trademark Infringement,2018,6,Insolvency,plaintiff_win,0.504,Trademark infringement case involving brand protection and market confusion filed in 2018.
+CASE_2017_0116,Calcutta High Court,Justice A. Kumar,Licensing Agreement,2023,4,Corporate Law,plaintiff_win,0.8,Technology licensing and royalty payment dispute filed in 2023.
+CASE_2015_0117,Rajasthan High Court,Justice V. Reddy,Licensing Agreement,2017,7,Banking Law,plaintiff_win,0.53,Technology licensing and royalty payment dispute filed in 2017.
+CASE_2015_0118,Madhya Pradesh High Court,Justice V. Reddy,Shareholder Dispute,2022,7,Banking Law,plaintiff_win,0.576,Shareholder rights and corporate governance dispute filed in 2022.
+CASE_2015_0119,Calcutta High Court,Justice H. Kapoor,Shareholder Dispute,2016,5,Intellectual Property,plaintiff_win,0.644,Shareholder rights and corporate governance dispute filed in 2016.
+CASE_2016_0120,Madhya Pradesh High Court,Justice L. Desai,Joint Venture Dispute,2015,6,Corporate Law,plaintiff_win,0.501,Joint venture agreement breach and profit distribution dispute filed in 2015.
+CASE_2024_0121,Calcutta High Court,Justice S. Sharma,Patent Dispute,2016,6,Securities Law,plaintiff_win,0.753,Patent validity and infringement dispute in technology sector filed in 2016.
+CASE_2024_0122,Madras High Court,Justice C. Joshi,Intellectual Property,2021,5,Banking Law,settlement,0.568,Comprehensive IP rights protection and licensing dispute filed in 2021.
+CASE_2019_0123,Madhya Pradesh High Court,Justice N. Gupta,Partnership Dispute,2024,5,Contract Law,defendant_win,0.567,Partnership dissolution and profit-sharing dispute filed in 2024.
+CASE_2016_0124,Madras High Court,Justice L. Desai,Patent Dispute,2019,3,Intellectual Property,plaintiff_win,0.614,Patent validity and infringement dispute in technology sector filed in 2019.
+CASE_2017_0125,Rajasthan High Court,Justice S. Sharma,Copyright Violation,2015,5,Securities Law,plaintiff_win,0.501,Copyright infringement matter concerning unauthorized reproduction filed in 2015.
+CASE_2024_0126,Allahabad High Court,Justice V. Reddy,Breach of Contract,2018,5,Insolvency,defendant_win,0.636,Commercial contract dispute regarding non-performance of obligations filed in 2018.
+CASE_2022_0127,Delhi High Court,Justice L. Desai,Patent Dispute,2019,3,Arbitration,plaintiff_win,0.641,Patent validity and infringement dispute in technology sector filed in 2019.
+CASE_2023_0128,Madras High Court,Justice L. Desai,Copyright Violation,2019,5,Corporate Law,plaintiff_win,0.567,Copyright infringement matter concerning unauthorized reproduction filed in 2019.
+CASE_2017_0129,Calcutta High Court,Justice T. Iyer,Licensing Agreement,2024,6,Insolvency,plaintiff_win,0.605,Technology licensing and royalty payment dispute filed in 2024.
+CASE_2022_0130,Calcutta High Court,Justice B. Nair,Insolvency Proceedings,2019,3,Banking Law,defendant_win,0.423,Corporate insolvency resolution process under IBC filed in 2019.
+CASE_2024_0131,Supreme Court of India,Justice N. Gupta,Licensing Agreement,2020,3,Insolvency,plaintiff_win,0.8,Technology licensing and royalty payment dispute filed in 2020.
+CASE_2018_0132,Madhya Pradesh High Court,Justice T. Iyer,Breach of Contract,2019,6,Contract Law,plaintiff_win,0.784,Commercial contract dispute regarding non-performance of obligations filed in 2019.
+CASE_2017_0133,Allahabad High Court,Justice D. Verma,Joint Venture Dispute,2022,6,Insolvency,plaintiff_win,0.552,Joint venture agreement breach and profit distribution dispute filed in 2022.
+CASE_2024_0134,Gujarat High Court,Justice L. Desai,Merger & Acquisition Dispute,2022,5,Intellectual Property,plaintiff_win,0.594,M&A transaction dispute regarding representations and warranties filed in 2022.
+CASE_2021_0135,Karnataka High Court,Justice P. Mehta,Joint Venture Dispute,2016,6,Corporate Law,plaintiff_win,0.456,Joint venture agreement breach and profit distribution dispute filed in 2016.
+CASE_2022_0136,Calcutta High Court,Justice L. Desai,Insolvency Proceedings,2023,3,Contract Law,defendant_win,0.433,Corporate insolvency resolution process under IBC filed in 2023.
+CASE_2020_0137,Calcutta High Court,Justice P. Mehta,Trademark Infringement,2021,3,Contract Law,defendant_win,0.623,Trademark infringement case involving brand protection and market confusion filed in 2021.
+CASE_2023_0138,Allahabad High Court,Justice N. Gupta,Breach of Contract,2018,4,Competition Law,plaintiff_win,0.8,Commercial contract dispute regarding non-performance of obligations filed in 2018.
+CASE_2022_0139,Allahabad High Court,Justice C. Joshi,Breach of Contract,2018,4,Insolvency,plaintiff_win,0.682,Commercial contract dispute regarding non-performance of obligations filed in 2018.
+CASE_2019_0140,Allahabad High Court,Justice B. Nair,Shareholder Dispute,2016,6,Contract Law,dismissed,0.339,Shareholder rights and corporate governance dispute filed in 2016.
+CASE_2024_0141,Madras High Court,Justice B. Nair,Copyright Violation,2019,6,Contract Law,plaintiff_win,0.638,Copyright infringement matter concerning unauthorized reproduction filed in 2019.
+CASE_2016_0142,Madras High Court,Justice H. Kapoor,Trademark Infringement,2022,6,Intellectual Property,plaintiff_win,0.8,Trademark infringement case involving brand protection and market confusion filed in 2022.
+CASE_2017_0143,Allahabad High Court,Justice B. Nair,Partnership Dispute,2023,5,Insolvency,plaintiff_win,0.477,Partnership dissolution and profit-sharing dispute filed in 2023.
+CASE_2022_0144,Allahabad High Court,Justice M. Singh,Shareholder Dispute,2023,6,Corporate Law,plaintiff_win,0.502,Shareholder rights and corporate governance dispute filed in 2023.
+CASE_2024_0145,Rajasthan High Court,Justice B. Nair,Copyright Violation,2016,3,Insolvency,defendant_win,0.626,Copyright infringement matter concerning unauthorized reproduction filed in 2016.
+CASE_2021_0146,Karnataka High Court,Justice C. Joshi,Intellectual Property,2019,3,Contract Law,plaintiff_win,0.737,Comprehensive IP rights protection and licensing dispute filed in 2019.
+CASE_2019_0147,Madhya Pradesh High Court,Justice T. Iyer,Joint Venture Dispute,2022,5,Corporate Law,defendant_win,0.421,Joint venture agreement breach and profit distribution dispute filed in 2022.
+CASE_2022_0148,Karnataka High Court,Justice P. Mehta,Intellectual Property,2023,5,Securities Law,plaintiff_win,0.539,Comprehensive IP rights protection and licensing dispute filed in 2023.
+CASE_2020_0149,Madras High Court,Justice B. Nair,Patent Dispute,2024,5,Securities Law,plaintiff_win,0.8,Patent validity and infringement dispute in technology sector filed in 2024.
+CASE_2021_0150,Supreme Court of India,Justice P. Mehta,Licensing Agreement,2022,3,Securities Law,plaintiff_win,0.782,Technology licensing and royalty payment dispute filed in 2022.
+CASE_2017_0151,Allahabad High Court,Justice A. Kumar,Copyright Violation,2023,5,Competition Law,defendant_win,0.736,Copyright infringement matter concerning unauthorized reproduction filed in 2023.
+CASE_2022_0152,Delhi High Court,Justice D. Verma,Shareholder Dispute,2015,7,Corporate Law,plaintiff_win,0.765,Shareholder rights and corporate governance dispute filed in 2015.
+CASE_2017_0153,Delhi High Court,Justice K. Rao,Supply Chain Dispute,2019,6,Competition Law,defendant_win,0.51,Supply chain contract breach and delivery obligations dispute filed in 2019.
+CASE_2021_0154,Delhi High Court,Justice H. Kapoor,Arbitration Matter,2023,5,Securities Law,dismissed,0.586,Arbitration award enforcement and challenge proceedings filed in 2023.
+CASE_2022_0155,Rajasthan High Court,Justice A. Kumar,Commercial Fraud,2016,7,Arbitration,defendant_win,0.54,Commercial fraud and misrepresentation case filed in 2016.
+CASE_2019_0156,Madras High Court,Justice B. Nair,Trademark Infringement,2021,6,Intellectual Property,plaintiff_win,0.778,Trademark infringement case involving brand protection and market confusion filed in 2021.
+CASE_2016_0157,Allahabad High Court,Justice R. Patel,Licensing Agreement,2019,5,Contract Law,plaintiff_win,0.569,Technology licensing and royalty payment dispute filed in 2019.
+CASE_2015_0158,Calcutta High Court,Justice P. Mehta,Arbitration Matter,2021,5,Corporate Law,plaintiff_win,0.557,Arbitration award enforcement and challenge proceedings filed in 2021.
+CASE_2021_0159,Madhya Pradesh High Court,Justice L. Desai,Supply Chain Dispute,2017,8,Corporate Law,plaintiff_win,0.351,Supply chain contract breach and delivery obligations dispute filed in 2017.
+CASE_2024_0160,Gujarat High Court,Justice T. Iyer,Joint Venture Dispute,2018,5,Banking Law,dismissed,0.521,Joint venture agreement breach and profit distribution dispute filed in 2018.
+CASE_2017_0161,Madras High Court,Justice K. Rao,Joint Venture Dispute,2019,7,Banking Law,plaintiff_win,0.438,Joint venture agreement breach and profit distribution dispute filed in 2019.
+CASE_2015_0162,Allahabad High Court,Justice V. Reddy,Joint Venture Dispute,2023,6,Corporate Law,plaintiff_win,0.514,Joint venture agreement breach and profit distribution dispute filed in 2023.
+CASE_2020_0163,Madhya Pradesh High Court,Justice V. Reddy,Joint Venture Dispute,2021,6,Insolvency,plaintiff_win,0.586,Joint venture agreement breach and profit distribution dispute filed in 2021.
+CASE_2019_0164,Madras High Court,Justice N. Gupta,Merger & Acquisition Dispute,2022,7,Intellectual Property,plaintiff_win,0.608,M&A transaction dispute regarding representations and warranties filed in 2022.
+CASE_2024_0165,Karnataka High Court,Justice T. Iyer,Partnership Dispute,2019,4,Contract Law,dismissed,0.605,Partnership dissolution and profit-sharing dispute filed in 2019.
+CASE_2021_0166,Calcutta High Court,Justice A. Kumar,Commercial Fraud,2015,7,Banking Law,defendant_win,0.659,Commercial fraud and misrepresentation case filed in 2015.
+CASE_2019_0167,Madras High Court,Justice T. Iyer,Supply Chain Dispute,2020,8,Arbitration,dismissed,0.271,Supply chain contract breach and delivery obligations dispute filed in 2020.
+CASE_2024_0168,Calcutta High Court,Justice L. Desai,Supply Chain Dispute,2017,6,Intellectual Property,dismissed,0.378,Supply chain contract breach and delivery obligations dispute filed in 2017.
+CASE_2015_0169,Calcutta High Court,Justice C. Joshi,Shareholder Dispute,2015,5,Competition Law,defendant_win,0.655,Shareholder rights and corporate governance dispute filed in 2015.
+CASE_2016_0170,Calcutta High Court,Justice P. Mehta,Licensing Agreement,2021,6,Corporate Law,plaintiff_win,0.506,Technology licensing and royalty payment dispute filed in 2021.
+CASE_2023_0171,Karnataka High Court,Justice D. Verma,Intellectual Property,2019,4,Corporate Law,plaintiff_win,0.551,Comprehensive IP rights protection and licensing dispute filed in 2019.
+CASE_2022_0172,Calcutta High Court,Justice B. Nair,Merger & Acquisition Dispute,2020,7,Intellectual Property,plaintiff_win,0.643,M&A transaction dispute regarding representations and warranties filed in 2020.
+CASE_2016_0173,Bombay High Court,Justice C. Joshi,Patent Dispute,2021,5,Competition Law,plaintiff_win,0.706,Patent validity and infringement dispute in technology sector filed in 2021.
+CASE_2021_0174,Supreme Court of India,Justice V. Reddy,Intellectual Property,2016,3,Banking Law,plaintiff_win,0.685,Comprehensive IP rights protection and licensing dispute filed in 2016.
+CASE_2019_0175,Madhya Pradesh High Court,Justice N. Gupta,Merger & Acquisition Dispute,2020,7,Intellectual Property,defendant_win,0.523,M&A transaction dispute regarding representations and warranties filed in 2020.
+CASE_2022_0176,Supreme Court of India,Justice T. Iyer,Intellectual Property,2020,8,Arbitration,defendant_win,0.439,Comprehensive IP rights protection and licensing dispute filed in 2020.
+CASE_2022_0177,Calcutta High Court,Justice L. Desai,Insolvency Proceedings,2016,8,Corporate Law,plaintiff_win,0.591,Corporate insolvency resolution process under IBC filed in 2016.
+CASE_2015_0178,Calcutta High Court,Justice K. Rao,Trademark Infringement,2016,5,Arbitration,defendant_win,0.707,Trademark infringement case involving brand protection and market confusion filed in 2016.
+CASE_2017_0179,Gujarat High Court,Justice K. Rao,Arbitration Matter,2023,4,Securities Law,plaintiff_win,0.72,Arbitration award enforcement and challenge proceedings filed in 2023.
+CASE_2017_0180,Gujarat High Court,Justice L. Desai,Trademark Infringement,2022,6,Securities Law,dismissed,0.53,Trademark infringement case involving brand protection and market confusion filed in 2022.
+CASE_2019_0181,Supreme Court of India,Justice B. Nair,Arbitration Matter,2018,6,Banking Law,plaintiff_win,0.48,Arbitration award enforcement and challenge proceedings filed in 2018.
+CASE_2018_0182,Karnataka High Court,Justice S. Sharma,Joint Venture Dispute,2020,5,Competition Law,plaintiff_win,0.629,Joint venture agreement breach and profit distribution dispute filed in 2020.
+CASE_2019_0183,Madras High Court,Justice S. Sharma,Merger & Acquisition Dispute,2022,5,Intellectual Property,defendant_win,0.599,M&A transaction dispute regarding representations and warranties filed in 2022.
+CASE_2024_0184,Supreme Court of India,Justice A. Kumar,Supply Chain Dispute,2020,4,Arbitration,defendant_win,0.8,Supply chain contract breach and delivery obligations dispute filed in 2020.
+CASE_2024_0185,Madras High Court,Justice S. Sharma,Merger & Acquisition Dispute,2023,4,Arbitration,plaintiff_win,0.741,M&A transaction dispute regarding representations and warranties filed in 2023.
+CASE_2018_0186,Karnataka High Court,Justice C. Joshi,Copyright Violation,2024,4,Contract Law,plaintiff_win,0.8,Copyright infringement matter concerning unauthorized reproduction filed in 2024.
+CASE_2017_0187,Bombay High Court,Justice D. Verma,Partnership Dispute,2017,3,Intellectual Property,defendant_win,0.537,Partnership dissolution and profit-sharing dispute filed in 2017.
+CASE_2015_0188,Bombay High Court,Justice A. Kumar,Arbitration Matter,2018,7,Competition Law,plaintiff_win,0.63,Arbitration award enforcement and challenge proceedings filed in 2018.
+CASE_2019_0189,Supreme Court of India,Justice R. Patel,Licensing Agreement,2021,6,Intellectual Property,defendant_win,0.715,Technology licensing and royalty payment dispute filed in 2021.
+CASE_2022_0190,Allahabad High Court,Justice C. Joshi,Arbitration Matter,2023,7,Intellectual Property,plaintiff_win,0.502,Arbitration award enforcement and challenge proceedings filed in 2023.
+CASE_2018_0191,Madhya Pradesh High Court,Justice A. Kumar,Licensing Agreement,2023,8,Insolvency,plaintiff_win,0.464,Technology licensing and royalty payment dispute filed in 2023.
+CASE_2015_0192,Supreme Court of India,Justice K. Rao,Merger & Acquisition Dispute,2021,3,Securities Law,plaintiff_win,0.786,M&A transaction dispute regarding representations and warranties filed in 2021.
+CASE_2022_0193,Allahabad High Court,Justice S. Sharma,Trademark Infringement,2020,6,Corporate Law,plaintiff_win,0.526,Trademark infringement case involving brand protection and market confusion filed in 2020.
+CASE_2019_0194,Madhya Pradesh High Court,Justice L. Desai,Commercial Fraud,2023,7,Competition Law,plaintiff_win,0.8,Commercial fraud and misrepresentation case filed in 2023.
+CASE_2024_0195,Rajasthan High Court,Justice V. Reddy,Shareholder Dispute,2023,4,Securities Law,plaintiff_win,0.57,Shareholder rights and corporate governance dispute filed in 2023.
+CASE_2016_0196,Rajasthan High Court,Justice B. Nair,Merger & Acquisition Dispute,2018,5,Securities Law,plaintiff_win,0.5,M&A transaction dispute regarding representations and warranties filed in 2018.
+CASE_2018_0197,Gujarat High Court,Justice P. Mehta,Merger & Acquisition Dispute,2022,3,Securities Law,plaintiff_win,0.727,M&A transaction dispute regarding representations and warranties filed in 2022.
+CASE_2016_0198,Karnataka High Court,Justice N. Gupta,Arbitration Matter,2019,5,Competition Law,dismissed,0.577,Arbitration award enforcement and challenge proceedings filed in 2019.
+CASE_2022_0199,Delhi High Court,Justice S. Sharma,Merger & Acquisition Dispute,2016,8,Intellectual Property,defendant_win,0.365,M&A transaction dispute regarding representations and warranties filed in 2016.
+CASE_2020_0200,Bombay High Court,Justice D. Verma,Breach of Contract,2024,7,Competition Law,defendant_win,0.596,Commercial contract dispute regarding non-performance of obligations filed in 2024.
+CASE_2021_0201,Karnataka High Court,Justice H. Kapoor,Joint Venture Dispute,2021,4,Contract Law,dismissed,0.607,Joint venture agreement breach and profit distribution dispute filed in 2021.
+CASE_2024_0202,Calcutta High Court,Justice P. Mehta,Trademark Infringement,2024,8,Arbitration,plaintiff_win,0.648,Trademark infringement case involving brand protection and market confusion filed in 2024.
+CASE_2022_0203,Madras High Court,Justice H. Kapoor,Trademark Infringement,2020,3,Competition Law,plaintiff_win,0.747,Trademark infringement case involving brand protection and market confusion filed in 2020.
+CASE_2019_0204,Madhya Pradesh High Court,Justice M. Singh,Supply Chain Dispute,2021,5,Contract Law,plaintiff_win,0.635,Supply chain contract breach and delivery obligations dispute filed in 2021.
+CASE_2019_0205,Supreme Court of India,Justice R. Patel,Partnership Dispute,2019,6,Competition Law,plaintiff_win,0.507,Partnership dissolution and profit-sharing dispute filed in 2019.
+CASE_2017_0206,Bombay High Court,Justice T. Iyer,Joint Venture Dispute,2021,6,Intellectual Property,plaintiff_win,0.766,Joint venture agreement breach and profit distribution dispute filed in 2021.
+CASE_2015_0207,Delhi High Court,Justice B. Nair,Intellectual Property,2018,5,Securities Law,plaintiff_win,0.519,Comprehensive IP rights protection and licensing dispute filed in 2018.
+CASE_2020_0208,Bombay High Court,Justice P. Mehta,Partnership Dispute,2020,6,Intellectual Property,defendant_win,0.678,Partnership dissolution and profit-sharing dispute filed in 2020.
+CASE_2017_0209,Bombay High Court,Justice C. Joshi,Commercial Fraud,2015,4,Intellectual Property,plaintiff_win,0.714,Commercial fraud and misrepresentation case filed in 2015.
+CASE_2021_0210,Allahabad High Court,Justice T. Iyer,Shareholder Dispute,2021,5,Insolvency,plaintiff_win,0.414,Shareholder rights and corporate governance dispute filed in 2021.
+CASE_2023_0211,Delhi High Court,Justice P. Mehta,Insolvency Proceedings,2016,5,Insolvency,settlement,0.339,Corporate insolvency resolution process under IBC filed in 2016.
+CASE_2024_0212,Allahabad High Court,Justice D. Verma,Joint Venture Dispute,2019,7,Contract Law,plaintiff_win,0.536,Joint venture agreement breach and profit distribution dispute filed in 2019.
+CASE_2024_0213,Supreme Court of India,Justice A. Kumar,Patent Dispute,2019,6,Arbitration,plaintiff_win,0.8,Patent validity and infringement dispute in technology sector filed in 2019.
+CASE_2019_0214,Calcutta High Court,Justice P. Mehta,Trademark Infringement,2015,5,Banking Law,plaintiff_win,0.748,Trademark infringement case involving brand protection and market confusion filed in 2015.
+CASE_2017_0215,Bombay High Court,Justice N. Gupta,Intellectual Property,2018,7,Competition Law,plaintiff_win,0.523,Comprehensive IP rights protection and licensing dispute filed in 2018.
+CASE_2015_0216,Gujarat High Court,Justice A. Kumar,Shareholder Dispute,2016,7,Competition Law,defendant_win,0.552,Shareholder rights and corporate governance dispute filed in 2016.
+CASE_2024_0217,Gujarat High Court,Justice B. Nair,Joint Venture Dispute,2021,8,Insolvency,plaintiff_win,0.48,Joint venture agreement breach and profit distribution dispute filed in 2021.
+CASE_2015_0218,Karnataka High Court,Justice R. Patel,Supply Chain Dispute,2024,5,Banking Law,dismissed,0.44,Supply chain contract breach and delivery obligations dispute filed in 2024.
+CASE_2020_0219,Delhi High Court,Justice N. Gupta,Merger & Acquisition Dispute,2016,8,Arbitration,plaintiff_win,0.458,M&A transaction dispute regarding representations and warranties filed in 2016.
+CASE_2021_0220,Rajasthan High Court,Justice S. Sharma,Insolvency Proceedings,2019,5,Competition Law,plaintiff_win,0.608,Corporate insolvency resolution process under IBC filed in 2019.
+CASE_2017_0221,Delhi High Court,Justice D. Verma,Joint Venture Dispute,2016,5,Arbitration,dismissed,0.519,Joint venture agreement breach and profit distribution dispute filed in 2016.
+CASE_2020_0222,Karnataka High Court,Justice B. Nair,Merger & Acquisition Dispute,2017,7,Arbitration,plaintiff_win,0.494,M&A transaction dispute regarding representations and warranties filed in 2017.
+CASE_2019_0223,Madras High Court,Justice R. Patel,Commercial Fraud,2017,7,Intellectual Property,plaintiff_win,0.8,Commercial fraud and misrepresentation case filed in 2017.
+CASE_2022_0224,Allahabad High Court,Justice C. Joshi,Commercial Fraud,2024,7,Banking Law,plaintiff_win,0.731,Commercial fraud and misrepresentation case filed in 2024.
+CASE_2024_0225,Madhya Pradesh High Court,Justice P. Mehta,Merger & Acquisition Dispute,2020,7,Corporate Law,plaintiff_win,0.519,M&A transaction dispute regarding representations and warranties filed in 2020.
+CASE_2022_0226,Allahabad High Court,Justice L. Desai,Partnership Dispute,2019,4,Contract Law,plaintiff_win,0.39,Partnership dissolution and profit-sharing dispute filed in 2019.
+CASE_2016_0227,Calcutta High Court,Justice K. Rao,Shareholder Dispute,2015,8,Contract Law,defendant_win,0.263,Shareholder rights and corporate governance dispute filed in 2015.
+CASE_2019_0228,Delhi High Court,Justice L. Desai,Merger & Acquisition Dispute,2016,6,Securities Law,plaintiff_win,0.584,M&A transaction dispute regarding representations and warranties filed in 2016.
+CASE_2023_0229,Supreme Court of India,Justice K. Rao,Supply Chain Dispute,2024,6,Arbitration,plaintiff_win,0.517,Supply chain contract breach and delivery obligations dispute filed in 2024.
+CASE_2022_0230,Rajasthan High Court,Justice R. Patel,Breach of Contract,2022,6,Intellectual Property,defendant_win,0.62,Commercial contract dispute regarding non-performance of obligations filed in 2022.
+CASE_2020_0231,Delhi High Court,Justice D. Verma,Joint Venture Dispute,2017,5,Contract Law,plaintiff_win,0.541,Joint venture agreement breach and profit distribution dispute filed in 2017.
+CASE_2022_0232,Allahabad High Court,Justice D. Verma,Intellectual Property,2024,7,Corporate Law,plaintiff_win,0.705,Comprehensive IP rights protection and licensing dispute filed in 2024.
+CASE_2019_0233,Gujarat High Court,Justice N. Gupta,Supply Chain Dispute,2020,5,Contract Law,defendant_win,0.653,Supply chain contract breach and delivery obligations dispute filed in 2020.
+CASE_2020_0234,Delhi High Court,Justice P. Mehta,Trademark Infringement,2023,5,Securities Law,plaintiff_win,0.697,Trademark infringement case involving brand protection and market confusion filed in 2023.
+CASE_2024_0235,Bombay High Court,Justice P. Mehta,Trademark Infringement,2024,4,Corporate Law,defendant_win,0.8,Trademark infringement case involving brand protection and market confusion filed in 2024.
+CASE_2019_0236,Gujarat High Court,Justice R. Patel,Commercial Fraud,2016,4,Insolvency,plaintiff_win,0.788,Commercial fraud and misrepresentation case filed in 2016.
+CASE_2020_0237,Bombay High Court,Justice L. Desai,Licensing Agreement,2023,4,Intellectual Property,defendant_win,0.457,Technology licensing and royalty payment dispute filed in 2023.
+CASE_2021_0238,Rajasthan High Court,Justice P. Mehta,Breach of Contract,2020,5,Insolvency,plaintiff_win,0.794,Commercial contract dispute regarding non-performance of obligations filed in 2020.
+CASE_2018_0239,Karnataka High Court,Justice C. Joshi,Shareholder Dispute,2018,7,Arbitration,dismissed,0.52,Shareholder rights and corporate governance dispute filed in 2018.
+CASE_2017_0240,Delhi High Court,Justice V. Reddy,Merger & Acquisition Dispute,2016,6,Contract Law,settlement,0.313,M&A transaction dispute regarding representations and warranties filed in 2016.
+CASE_2024_0241,Bombay High Court,Justice T. Iyer,Insolvency Proceedings,2017,5,Corporate Law,plaintiff_win,0.628,Corporate insolvency resolution process under IBC filed in 2017.
+CASE_2024_0242,Bombay High Court,Justice B. Nair,Shareholder Dispute,2015,7,Securities Law,plaintiff_win,0.563,Shareholder rights and corporate governance dispute filed in 2015.
+CASE_2018_0243,Allahabad High Court,Justice T. Iyer,Partnership Dispute,2022,4,Arbitration,plaintiff_win,0.599,Partnership dissolution and profit-sharing dispute filed in 2022.
+CASE_2019_0244,Allahabad High Court,Justice H. Kapoor,Patent Dispute,2020,4,Banking Law,plaintiff_win,0.8,Patent validity and infringement dispute in technology sector filed in 2020.
+CASE_2019_0245,Gujarat High Court,Justice D. Verma,Intellectual Property,2021,5,Corporate Law,settlement,0.549,Comprehensive IP rights protection and licensing dispute filed in 2021.
+CASE_2024_0246,Bombay High Court,Justice H. Kapoor,Partnership Dispute,2015,5,Banking Law,settlement,0.57,Partnership dissolution and profit-sharing dispute filed in 2015.
+CASE_2023_0247,Delhi High Court,Justice B. Nair,Merger & Acquisition Dispute,2023,6,Intellectual Property,plaintiff_win,0.568,M&A transaction dispute regarding representations and warranties filed in 2023.
+CASE_2017_0248,Calcutta High Court,Justice K. Rao,Intellectual Property,2017,4,Securities Law,plaintiff_win,0.542,Comprehensive IP rights protection and licensing dispute filed in 2017.
+CASE_2018_0249,Allahabad High Court,Justice P. Mehta,Breach of Contract,2021,4,Contract Law,plaintiff_win,0.59,Commercial contract dispute regarding non-performance of obligations filed in 2021.
+CASE_2020_0250,Madras High Court,Justice N. Gupta,Trademark Infringement,2020,5,Arbitration,plaintiff_win,0.699,Trademark infringement case involving brand protection and market confusion filed in 2020.

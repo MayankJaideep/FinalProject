@@ -12,7 +12,7 @@ export default function DeadlineTracker() {
     const handleSubmit = async () => {
         setLoading(true); setError(null); setDeadlines([]);
         try {
-            const res = await axios.post('http://localhost:8000/deadline-tracker', formData);
+            const res = await axios.post('/api/deadline-tracker', formData);
             setDeadlines(res.data.deadlines);
         } catch (err) {
             setError(err.response?.data?.detail || err.message);
