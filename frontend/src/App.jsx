@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, MessageSquare, BookOpen, Upload, Clock, Scale, Gavel, CalendarClock, Activity } from 'lucide-react';
+import { MessageSquare, BookOpen, Upload, Clock, Scale, Gavel, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import ChatInterface from './components/ChatInterface';
-import Dashboard from './components/Dashboard';
 import PDFUploader from './components/PDFUploader';
 import Chronology from './components/Chronology';
 import LandingPage from './components/LandingPage';
 import ArgumentBuilder from './components/ArgumentBuilder';
-import DeadlineTracker from './components/DeadlineTracker';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Global Axios Configuration for Authentication
@@ -21,11 +19,9 @@ function App() {
 
   const tabs = [
     { id: 'chat', label: 'Research Assistant', icon: MessageSquare },
-    { id: 'dashboard', label: 'Prediction Dashboard', icon: LayoutDashboard },
     { id: 'chronology', label: 'Case Timeline', icon: Clock },
     { id: 'upload', label: 'Knowledge Base', icon: Upload },
     { id: 'argument', label: 'Argument Builder', icon: Gavel },
-    { id: 'deadline', label: 'Deadline Tracker', icon: CalendarClock },
   ];
 
   const [health, setHealth] = useState({
@@ -147,11 +143,9 @@ function App() {
             >
               <ErrorBoundary>
                 {activeTab === 'chat' && <ChatInterface />}
-                {activeTab === 'dashboard' && <Dashboard />}
                 {activeTab === 'chronology' && <Chronology />}
                 {activeTab === 'upload' && <PDFUploader />}
                 {activeTab === 'argument' && <ArgumentBuilder />}
-                {activeTab === 'deadline' && <DeadlineTracker />}
               </ErrorBoundary>
             </motion.div>
           </AnimatePresence>

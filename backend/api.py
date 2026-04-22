@@ -1065,64 +1065,91 @@ async def argument_builder(request: ArgumentBuilderRequest):
 
 class DeadlineTrackerRequest(BaseModel):
     filing_date: str
+    service_date: Optional[str] = None
     case_type: str
+    basis: Optional[str] = None
+    suit_type: Optional[str] = None
 
 @app.post("/deadline-tracker")
 async def deadline_tracker(request: DeadlineTrackerRequest):
     from datetime import datetime, timedelta
-    
+    import math
+
+    basis = (request.basis or "filing_date").strip()
+    if basis not in {"filing_date", "service_date"}:
+        raise HTTPException(status_code=400, detail=f"Unsupported basis: {basis}")
+
+    if basis == "service_date":
+        if not request.service_date:
+            raise HTTPException(status_code=400, detail="service_date is required when basis=service_date")
+        date_to_parse = request.service_date
+    else:
+        date_to_parse = request.filing_date
+
     try:
-        base_date = datetime.strptime(request.filing_date, "%Y-%m-%d")
-        
-        # Hardcoded Commercial Courts Act Deadlines
-        deadlines = [
+        base_date = datetime.strptime(date_to_parse, "%Y-%m-%d")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
+
+    case_type = (request.case_type or "").strip()
+
+    if case_type == "Original Suit":
+        if basis != "service_date":
+            raise HTTPException(
+                status_code=400,
+                detail="For Original Suit, statutory written statement timelines are triggered from service of summons. Select basis=service_date and provide service_date."
+            )
+        suit_type = (request.suit_type or "civil").strip().lower()
+        if suit_type not in {"civil", "commercial"}:
+            raise HTTPException(status_code=400, detail=f"Unsupported suit_type: {suit_type}")
+
+        max_days = 120 if suit_type == "commercial" else 90
+        rules = [
             {
-                "name": "Written Statement",
+                "name": "Written Statement (standard)",
                 "days_offset": 30,
-                "max_offset": 120,
-                "source": "Order VIII Rule 1 CPC (Commercial)",
-                "critical": True
+                "source": "Order VIII Rule 1 CPC (trigger: service of summons)",
             },
             {
-                "name": "Filing of Documents",
-                "days_offset": 30,
-                "max_offset": 30,
-                "source": "Order XI Rule 1",
-                "critical": False
+                "name": "Written Statement (max)",
+                "days_offset": max_days,
+                "source": "Commercial Courts Act, 2015 read with Order VIII Rule 1 CPC (Commercial)" if suit_type == "commercial" else "CPC (extendable up to 90 days; subject to court discretion)",
             },
-            {
-                "name": "Case Management Hearing",
-                "days_offset": 30 + 28,  # approx 4 weeks after pleadings
-                "max_offset": 30 + 28,
-                "source": "Order XV-A",
-                "critical": True
-            },
-            {
-                "name": "Conclusion of Trial",
-                "days_offset": 30 + 28 + 180,  # 6 months after issues
-                "max_offset": 30 + 28 + 180,
-                "source": "Comm Courts Act Sec 16",
-                "critical": False
-            }
         ]
-        
-        computed = []
-        now = datetime.now()
-        for d in deadlines:
-            due_date = base_date + timedelta(days=d["days_offset"])
-            days_remaining = (due_date - now).days
-            
-            computed.append({
-                "name": d["name"],
+    else:
+        raise HTTPException(
+            status_code=501,
+            detail="Only Original Suit written statement deadlines are implemented with statutory trigger logic. Add rule sets for other case types before enabling."
+        )
+
+    now = datetime.now()
+    computed = []
+    for rule in rules:
+        due_date = base_date + timedelta(days=int(rule["days_offset"]))
+        diff_seconds = (due_date - now).total_seconds()
+        days_remaining = int(math.ceil(diff_seconds / 86400))
+        expired = days_remaining < 0
+        computed.append(
+            {
+                "name": rule["name"],
                 "due_date": due_date.strftime("%Y-%m-%d"),
                 "days_remaining": days_remaining,
                 "urgency": "red" if days_remaining < 7 else ("amber" if days_remaining < 21 else "green"),
-                "source": d["source"]
-            })
-            
-        return {"deadlines": computed}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
+                "source": rule["source"],
+                "basis": basis,
+                "expired": expired,
+            }
+        )
+
+    return {
+        "deadlines": computed,
+        "meta": {
+            "basis": basis,
+            "base_date": base_date.strftime("%Y-%m-%d"),
+            "case_type": case_type,
+            "suit_type": (request.suit_type or "civil").strip().lower() if case_type == "Original Suit" else None,
+        },
+    }
 
 
 if __name__ == "__main__":
