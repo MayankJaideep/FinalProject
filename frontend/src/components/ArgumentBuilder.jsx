@@ -12,7 +12,7 @@ export default function ArgumentBuilder() {
     const handleSubmit = async () => {
         setLoading(true); setError(null); setResult(null);
         try {
-            const res = await axios.post('/api/argument-builder', {
+            const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL || '/api'}/argument-builder`, {
                 issue: formData.issue,
                 side: formData.side,
                 relevant_case_ids: formData.case_ids.split(',').map(s => s.trim()).filter(x => x)

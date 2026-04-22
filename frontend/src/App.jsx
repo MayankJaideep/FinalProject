@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, BookOpen, Upload, Clock, Scale, Gavel, Activity } from 'lucide-react';
+import { MessageSquare, Upload, Clock, Gavel } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import ChatInterface from './components/ChatInterface';
@@ -36,7 +36,8 @@ function App() {
   useEffect(() => {
     const fetchHealth = async () => {
       try {
-        const res = await axios.get('/api/health');
+        const base = import.meta.env.VITE_API_BASE_URL || '/api';
+        const res = await axios.get(`${base}/health`);
         setHealth(res.data);
       } catch (err) {
         setHealth(prev => ({ ...prev, status: 'error' }));

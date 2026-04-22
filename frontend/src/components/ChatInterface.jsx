@@ -13,7 +13,7 @@ const CitationBadge = ({ href, children }) => {
     const [data, setData] = useState(null);
     useEffect(() => {
         if (open && !data) {
-            axios.post('/api/resolve-citations', { chunk_ids: [chunkId] })
+            axios.post(`${import.meta.env.VITE_API_BASE_URL || '/api'}/resolve-citations`, { chunk_ids: [chunkId] })
                 .then(res => setData(res.data.citations[0] || {source: "Unknown", excerpt: "No data", page: "?"}))
                 .catch(err => setData({source: "Error", excerpt: "Failed to load", page: "?"}));
         }
@@ -39,7 +39,7 @@ const CitationBadge = ({ href, children }) => {
     );
 };
 
-const API_URL = '/api';
+const API_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export default function ChatInterface() {
     const [messages, setMessages] = useState([
