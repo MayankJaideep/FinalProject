@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Upload, Clock, Gavel } from 'lucide-react';
+import { MessageSquare, Upload, Clock, Gavel, Scale } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import ChatInterface from './components/ChatInterface';
